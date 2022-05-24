@@ -1,30 +1,21 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import "./App.css";
 import {
   Box,
   Button,
   ButtonGroup,
+  FormControl,
+  FormLabel,
   Grid,
-  ImageList,
-  ImageListItem,
-  ImageListItemBar,
-  List,
-  ListItem,
+  Input,
   Paper,
   Stack,
-  Tab,
   Table,
   TableBody,
   TableCell,
-  TableHead,
   TableRow,
 } from "@mui/material";
-import {
-  ApiResponse,
-  PhotoMetrics,
-  SpeciesCount,
-  usePhotoMetrics,
-} from "./ApiResponse";
+import { PhotoMetrics, usePhotoMetrics } from "./ApiResponse";
 
 function App() {
   return (
@@ -50,12 +41,20 @@ function UploadMenu() {
     "/data/zebra-2.jpeg",
     "/data/zebra-3.jpeg",
   ];
+
+  const [selectedFiles, setSelectedFiles] = useState<FileList | null>(null);
   return (
     <Stack spacing={2}>
       <h2>Source Files</h2>
-      <ButtonGroup>
-        <Button>Upload Photos</Button>
-      </ButtonGroup>
+      <FormControl>
+        <FormLabel>Upload Photos</FormLabel>
+        <input
+          multiple={true}
+          accept={"image/jpeg,image/png"}
+          type={"file"}
+          onChange={(e) => setSelectedFiles(e.target.files)}
+        />
+      </FormControl>
       <Stack
         maxHeight={"100vh"}
         style={{ overflowY: "scroll", overflowX: "visible" }}
@@ -76,12 +75,27 @@ function Results() {
   const apiResponse = usePhotoMetrics({
     files: ["/data/zebra-1.jpeg", "/data/zebra-2.jpeg", "/data/zebra-3.jpeg"],
   });
+
+  const jsonDownloadUrl = useJsonDownloadUrl(apiResponse?.photo_metrics);
+  const csvDownloadUrl = useCSVDownloadUrl(apiResponse?.photo_metrics);
   return (
     <Stack spacing={2}>
       <h2>Results</h2>
       <ButtonGroup>
-        <Button>Download JSON</Button>
-        <Button>Download CSV</Button>
+        <Button
+          href={jsonDownloadUrl || "#"}
+          disabled={jsonDownloadUrl === undefined}
+          download={"results.json"}
+        >
+          Download JSON
+        </Button>
+        <Button
+          href={csvDownloadUrl || "#"}
+          disabled={csvDownloadUrl === undefined}
+          download={"results.csv"}
+        >
+          Download CSV
+        </Button>
       </ButtonGroup>
       <Stack spacing={4}>
         {apiResponse?.photo_metrics?.map((metrics, i) => (
@@ -128,6 +142,51 @@ function Results() {
       </Stack>
     </Stack>
   );
+}
+
+function useJsonDownloadUrl(
+  photo_metrics: Array<PhotoMetrics> | undefined
+): string | undefined {
+  const [url, setUrl] = useState<string | undefined>(undefined);
+  const data = JSON.stringify(photo_metrics || []);
+  useEffect(() => {
+    if (photo_metrics == undefined) {
+      return;
+    }
+
+    const blob = new Blob([data], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    setUrl(url);
+    return () => URL.revokeObjectURL(url);
+  }, [data]);
+  return url;
+}
+
+function useCSVDownloadUrl(
+  photo_metrics: Array<PhotoMetrics> | undefined
+): string | undefined {
+  const [url, setUrl] = useState<string | undefined>(undefined);
+  const data: string =
+    "File,Animal,Count\n" +
+    photo_metrics
+      ?.flatMap((metrics) =>
+        metrics.predictions.map(
+          (prediction) =>
+            `${metrics.file},${prediction.animal},${prediction.count}`
+        )
+      )
+      .reduce((a, b) => `${a}\n${b}`);
+  useEffect(() => {
+    if (photo_metrics == undefined) {
+      return;
+    }
+
+    const blob = new Blob([data], { type: "text/csv" });
+    const url = URL.createObjectURL(blob);
+    setUrl(url);
+    return () => URL.revokeObjectURL(url);
+  }, [data]);
+  return url;
 }
 
 export default App;

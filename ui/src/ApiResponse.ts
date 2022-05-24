@@ -18,12 +18,16 @@ export interface PhotoMetricsRequest {
 
 export interface ApiResponse {
   status: Status;
-  photo_metrics: Array<PhotoMetrics> | null;
-  error: string | null;
+  photo_metrics: Array<PhotoMetrics> | undefined;
+  error: string | undefined;
 }
 
-export function usePhotoMetrics(req: PhotoMetricsRequest): ApiResponse | null {
-  const [apiResponse, setApiResponse] = useState<ApiResponse | null>(null);
+export function usePhotoMetrics(
+  req: PhotoMetricsRequest
+): ApiResponse | undefined {
+  const [apiResponse, setApiResponse] = useState<ApiResponse | undefined>(
+    undefined
+  );
   useEffect(() => {
     fetchPhotoMetrics(req).then((data) => setApiResponse(data));
   }, [req.files.join(",")]);

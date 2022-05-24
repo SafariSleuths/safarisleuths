@@ -1,8 +1,8 @@
-from flask import Flask
+import flask
 
 from api_response import ApiResponse, Status
 
-app = Flask(__name__, static_url_path='', static_folder='ui/build')
+app = flask.Flask(__name__, static_url_path='', static_folder='ui/build')
 
 
 @app.route('/api/v1/predict_counts', methods=['POST'])
