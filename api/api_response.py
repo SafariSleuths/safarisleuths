@@ -7,11 +7,6 @@ class Status(Enum):
     ERROR = "error"
 
 
-class ResponseType(Enum):
-    ERROR = "error"
-    PHOTO_METRICS = "photo_metrics"
-
-
 class SpeciesCount(TypedDict):
     animal: str
     count: int

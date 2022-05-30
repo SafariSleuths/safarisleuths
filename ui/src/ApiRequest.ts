@@ -12,7 +12,7 @@ export interface PhotoMetrics {
 }
 
 export interface PredictRequest {
-  files: Array<string>;
+  session_id: string;
 }
 
 export interface ApiResponse {

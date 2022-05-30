@@ -1,5 +1,5 @@
 import os.path
-from typing import Any
+from typing import Any, Tuple, List
 import torch
 import numpy as np
 from torchvision.models import detection
@@ -21,7 +21,7 @@ def process_image(input_path: str, output_path: str) -> int:
     return count_zebras(objects)
 
 
-def detect_objects(image):
+def detect_objects(image: Any) -> Any:
     image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
     image = image.transpose((2, 0, 1))
     image = np.expand_dims(image, axis=0)
@@ -33,13 +33,19 @@ def detect_objects(image):
 def count_zebras(detections) -> int:
     count = 0
     for i in range(0, len(detections["boxes"])):
+        confidence = detections["scores"][i]
+        if min_confidence > confidence:
+            continue
+
         idx = int(detections["labels"][i])
-        if idx == 24:  # Zebra
-            count += 1
+        if idx != 24:  # Zebra
+            continue
+
+        count += 1
     return count
 
 
-def draw_bounding_boxes(image, detections) -> Any:
+def draw_bounding_boxes(image: Any, detections: Any) -> Any:
     for i in range(0, len(detections["boxes"])):
         idx = int(detections["labels"][i])
         if idx != 24:  # Zebra

@@ -21,29 +21,43 @@ def session():
     return ApiResponse(Status.OK, session=secrets.token_hex(16)).to_dict()
 
 
-@app.route('/api/v1/upload_image', methods=['POST'])
-def upload_image():
-    session_id = request.form['session_id']
+@app.route('/api/v1/list_files', methods=['POST'])
+def list_images():
+    session_id = 0
+    images = [f'data/inputs/{session_id}/{name}' for name in os.listdir(f'data/inputs/{session_id}')]
+    images.sort()
+    return {'status': 'ok', 'images': images}
+
+
+@app.route('/api/v1/upload_files', methods=['POST'])
+def upload_files():
+    session_id = 0
+    uploaded_files = []
     for file_name in request.files:
-        file_name = os.path.basename(file_name)
-        upload_path = f'../ui/public/data/inputs/{session_id}/{file_name}'
+        os.makedirs(f'data/inputs/{session_id}', exist_ok=True)
+        upload_path = f'data/inputs/{session_id}/{os.path.basename(file_name)}'
         request.files[file_name].save(upload_path)
+        uploaded_files.append(upload_path)
+    return {'status': 'ok', 'images': uploaded_files}
 
 
-class PredictRequest(TypedDict):
-    files: List[str]
-    session_id: str
+@app.route('/api/v1/delete_files', methods=['POST'])
+def delete_files():
+    session_id = 0
+    data = request.get_json()
+    deleted = []
+    for file_name in data['files']:
+        file_path = f'data/inputs/{session_id}/{os.path.basename(file_name)}'
+        os.remove(file_path)
+        deleted.append(file_path)
+    return {'status': 'ok', 'deleted': deleted}
 
 
 @app.route('/api/v1/predict', methods=['POST'])
 def predict():
-    data: PredictRequest = request.get_json()
-    metrics: List[PhotoMetrics] = []
     session_id = 0
-    if 'session_id' in data:
-        session_id = data['session_id']
-
-    for file_name in data['files']:
+    metrics: List[PhotoMetrics] = []
+    for file_name in os.listdir(f'data/inputs/{session_id}'):
         file_name = os.path.basename(file_name)
         input_file = f'data/inputs/{session_id}/{file_name}'
         output_file = f'data/outputs/{session_id}/{file_name}'
@@ -53,6 +67,8 @@ def predict():
             annotated_file=f'/{output_file}',
             predictions=[SpeciesCount(animal='zebra', count=count)]
         ))
+
+    metrics.sort(key=lambda a: a['file'])
     return ApiResponse(status=Status.OK, photo_metrics=metrics).to_dict()
 
 
