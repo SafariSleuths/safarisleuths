@@ -1,21 +1,24 @@
 from enum import Enum
 from typing import TypedDict, List, Optional, Dict, Any
 
+from api.model import Box
+
 
 class Status(Enum):
     OK = "ok"
     ERROR = "error"
 
 
-class SpeciesCount(TypedDict):
+class Prediction(TypedDict):
     animal: str
     count: int
+    boxes: List[Box]
 
 
 class PhotoMetrics(TypedDict):
     file: str
     annotated_file: str
-    predictions: List[SpeciesCount]
+    predictions: List[Prediction]
 
 
 class ApiResponse:

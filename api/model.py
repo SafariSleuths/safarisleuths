@@ -1,5 +1,5 @@
 import os.path
-from typing import Any, Tuple, List
+from typing import Any, Tuple, List, NamedTuple, TypedDict
 import torch
 import numpy as np
 from torchvision.models import detection
@@ -12,16 +12,24 @@ model = detection.fasterrcnn_resnet50_fpn(pretrained=True)
 model.eval()
 
 
-def process_image(input_path: str, output_path: str) -> int:
+class Box(TypedDict):
+    start: Tuple[int, int]
+    end: Tuple[int, int]
+    confidence: float
+    label: str
+
+
+def process_image(input_path: str, output_path: str) -> List[Box]:
     image = cv2.imread(input_path)
-    objects = detect_objects(image.copy())
-    annotated_image = draw_bounding_boxes(image, objects)
+    predictions = predict_objects(image.copy())
+    boxes = prediction_to_boxes(predictions)
+    annotated_image = draw_bounding_boxes(image, boxes)
     os.makedirs(os.path.dirname(output_path), exist_ok=True)
     cv2.imwrite(output_path, annotated_image)
-    return count_zebras(objects)
+    return boxes
 
 
-def detect_objects(image: Any) -> Any:
+def predict_objects(image: Any) -> Any:
     image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
     image = image.transpose((2, 0, 1))
     image = np.expand_dims(image, axis=0)
@@ -30,22 +38,8 @@ def detect_objects(image: Any) -> Any:
     return model(image)[0]
 
 
-def count_zebras(detections) -> int:
-    count = 0
-    for i in range(0, len(detections["boxes"])):
-        confidence = detections["scores"][i]
-        if min_confidence > confidence:
-            continue
-
-        idx = int(detections["labels"][i])
-        if idx != 24:  # Zebra
-            continue
-
-        count += 1
-    return count
-
-
-def draw_bounding_boxes(image: Any, detections: Any) -> Any:
+def prediction_to_boxes(detections: Any) -> List[Box]:
+    boxes: List[Box] = []
     for i in range(0, len(detections["boxes"])):
         idx = int(detections["labels"][i])
         if idx != 24:  # Zebra
@@ -57,8 +51,23 @@ def draw_bounding_boxes(image: Any, detections: Any) -> Any:
 
         box = detections["boxes"][i].detach().cpu().numpy()
         (startX, startY, endX, endY) = box.astype("int")
-        label = f"zebra: {confidence * 100:.2f}%"
-        cv2.rectangle(image, (startX, startY), (endX, endY), box_color, 2)
-        y = startY - 15 if startY - 15 > 15 else startY + 15
-        cv2.putText(image, label, (startX, y), cv2.FONT_HERSHEY_SIMPLEX, 0.5, box_color, 2)
+        boxes.append(Box(
+            start=(int(startX), int(startY)),
+            end=(int(endX), int(endY)),
+            confidence=float(confidence),
+            label='zebra'
+        ))
+    return boxes
+
+
+def draw_bounding_boxes(image: Any, boxes: List[Box]) -> Any:
+    for box in boxes:
+        label = f"{box['label']}: {box['confidence'] * 100:.2f}%"
+        cv2.rectangle(image, box['start'], box['end'], box_color, 2)
+        (text_x, text_y) = box['start']
+        if text_y > 15:
+            text_y -= 15
+        else:
+            text_y += 15
+        cv2.putText(image, label, (text_x, text_y), cv2.FONT_HERSHEY_SIMPLEX, 0.5, box_color, 2)
     return image

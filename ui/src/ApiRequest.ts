@@ -1,8 +1,16 @@
 export type Status = "ok" | "error";
 
+export interface Box {
+  start: Array<number>;
+  end: Array<number>;
+  confidence: number;
+  label: string;
+}
+
 export interface SpeciesCount {
   animal: number;
   count: number;
+  boxes: Array<Box>;
 }
 
 export interface PhotoMetrics {

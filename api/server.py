@@ -6,7 +6,7 @@ import flask
 from flask import request, send_from_directory
 
 from api.model import process_image
-from api_response import ApiResponse, Status, PhotoMetrics, SpeciesCount
+from api_response import ApiResponse, Status, PhotoMetrics, Prediction
 
 app = flask.Flask(__name__, static_url_path='', static_folder='ui/build')
 
@@ -61,11 +61,11 @@ def predict():
         file_name = os.path.basename(file_name)
         input_file = f'data/inputs/{session_id}/{file_name}'
         output_file = f'data/outputs/{session_id}/{file_name}'
-        count = process_image(input_file, output_file)
+        boxes = process_image(input_file, output_file)
         metrics.append(PhotoMetrics(
             file=file_name,
             annotated_file=f'/{output_file}',
-            predictions=[SpeciesCount(animal='zebra', count=count)]
+            predictions=[Prediction(animal='zebra', count=len(boxes), boxes=boxes)]
         ))
 
     metrics.sort(key=lambda a: a['file'])
