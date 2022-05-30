@@ -3,6 +3,7 @@ import { ApiResponse, fetchPhotoMetrics, PhotoMetrics } from "./ApiRequest";
 import {
   Button,
   ButtonGroup,
+  CircularProgress,
   Grid,
   Paper,
   Stack,
@@ -17,11 +18,15 @@ export function Results(props: { sessionID: string }) {
     undefined
   );
 
+  const [showLoading, setShowLoading] = useState(false);
+
   function getPredictions() {
     setApiResponse(undefined);
-    fetchPhotoMetrics({ session_id: props.sessionID }).then((data) =>
-      setApiResponse(data)
-    );
+    setShowLoading(true);
+    fetchPhotoMetrics({ session_id: props.sessionID }).then((data) => {
+      setApiResponse(data);
+      setShowLoading(false);
+    });
   }
 
   const jsonDownloadUrl = useJsonDownloadUrl(apiResponse?.photo_metrics);
@@ -48,6 +53,7 @@ export function Results(props: { sessionID: string }) {
         </Button>
       </ButtonGroup>
       <Stack spacing={4}>
+        {showLoading ? <CircularProgress /> : <div />}
         {apiResponse?.photo_metrics?.map((metrics, i) => (
           <Paper key={i}>
             <Grid container spacing={4} padding={3}>

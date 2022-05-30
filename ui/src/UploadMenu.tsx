@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { Button, FormControl, Stack } from "@mui/material";
+import { Button, CircularProgress, FormControl, Stack } from "@mui/material";
 import { ApiResponse, PredictRequest, Status } from "./ApiRequest";
 
 export function UploadMenu(props: { sessionID: string }) {
@@ -15,6 +15,7 @@ export function UploadMenu(props: { sessionID: string }) {
 
   const [selectedFiles, setSelectedFiles] = useState<FileList | null>(null);
 
+  const [showLoading, setShowLoading] = useState(false);
   return (
     <Stack spacing={2}>
       <h2>Source Files</h2>
@@ -28,9 +29,11 @@ export function UploadMenu(props: { sessionID: string }) {
         <Button
           disabled={selectedFiles == null}
           onClick={() => {
+            setShowLoading(true);
             uploadFiles(selectedFiles).then((uploaded) => {
+              setShowLoading(false);
               setSelectedFiles(null);
-              setUploadedFiles([...(uploadedFiles ?? []), ...uploaded]);
+              setUploadedFiles([...uploaded, ...(uploadedFiles ?? [])]);
             });
           }}
         >
@@ -38,6 +41,7 @@ export function UploadMenu(props: { sessionID: string }) {
         </Button>
       </FormControl>
       <Stack>
+        {showLoading ? <CircularProgress /> : <div />}
         {uploadedFiles?.map((src, i) => (
           <Stack alignItems={"center"} key={i}>
             <p>{src.slice(src.lastIndexOf("/") + 1)}</p>
