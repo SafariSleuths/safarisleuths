@@ -5,9 +5,7 @@ import {
   Button,
   ButtonGroup,
   FormControl,
-  FormLabel,
   Grid,
-  Input,
   Paper,
   Stack,
   Table,
@@ -15,12 +13,12 @@ import {
   TableCell,
   TableRow,
 } from "@mui/material";
-import { PhotoMetrics, usePhotoMetrics } from "./ApiResponse";
+import { ApiResponse, fetchPhotoMetrics, PhotoMetrics } from "./ApiResponse";
 
 function App() {
   return (
     <Box padding={2}>
-      <h1>Species Counter</h1>
+      <h1>Zebra Counter</h1>
       <Grid container spacing={2}>
         <Grid item xs={3}>
           <Box width={300}>
@@ -36,31 +34,36 @@ function App() {
 }
 
 function UploadMenu() {
-  const uploaded_photos = [
-    "/data/zebra-1.jpeg",
-    "/data/zebra-2.jpeg",
-    "/data/zebra-3.jpeg",
+  const uploadedPhotos = [
+    "/data/inputs/0/zebra-1.jpeg",
+    "/data/inputs/0/zebra-2.jpeg",
+    "/data/inputs/0/zebra-3.jpeg",
   ];
 
   const [selectedFiles, setSelectedFiles] = useState<FileList | null>(null);
+
+  function uploadPhotos() {}
+
   return (
     <Stack spacing={2}>
       <h2>Source Files</h2>
       <FormControl>
-        <FormLabel>Upload Photos</FormLabel>
         <input
           multiple={true}
           accept={"image/jpeg,image/png"}
           type={"file"}
           onChange={(e) => setSelectedFiles(e.target.files)}
         />
+        <Button disabled={selectedFiles == null} onClick={uploadPhotos}>
+          Upload Photos
+        </Button>
       </FormControl>
       <Stack
         maxHeight={"100vh"}
         style={{ overflowY: "scroll", overflowX: "visible" }}
       >
-        {uploaded_photos.map((src, i) => (
-          <Stack alignItems={"center"}>
+        {uploadedPhotos.map((src, i) => (
+          <Stack alignItems={"center"} key={i}>
             <p>{src}</p>
             <img src={src} alt={src} width={250} />
             <Button style={{ width: 250 }}>Delete</Button>
@@ -72,16 +75,25 @@ function UploadMenu() {
 }
 
 function Results() {
-  const apiResponse = usePhotoMetrics({
-    files: ["/data/zebra-1.jpeg", "/data/zebra-2.jpeg", "/data/zebra-3.jpeg"],
-  });
+  const files = ["zebra-1.jpeg", "zebra-2.jpeg", "zebra-3.jpeg"];
+
+  const [apiResponse, setApiResponse] = useState<ApiResponse | undefined>(
+    undefined
+  );
+
+  function getPredictions() {
+    setApiResponse(undefined);
+    fetchPhotoMetrics({ files }).then((data) => setApiResponse(data));
+  }
 
   const jsonDownloadUrl = useJsonDownloadUrl(apiResponse?.photo_metrics);
   const csvDownloadUrl = useCSVDownloadUrl(apiResponse?.photo_metrics);
+
   return (
     <Stack spacing={2}>
       <h2>Results</h2>
       <ButtonGroup>
+        <Button onClick={getPredictions}>Compute Results</Button>
         <Button
           href={jsonDownloadUrl || "#"}
           disabled={jsonDownloadUrl === undefined}
@@ -99,10 +111,14 @@ function Results() {
       </ButtonGroup>
       <Stack spacing={4}>
         {apiResponse?.photo_metrics?.map((metrics, i) => (
-          <Paper>
+          <Paper key={i}>
             <Grid container spacing={4} padding={3}>
               <Grid item>
-                <img src={metrics.file} alt={metrics.file} width={500} />
+                <img
+                  src={metrics.annotated_file}
+                  alt={metrics.annotated_file}
+                  width={500}
+                />
               </Grid>
               <Grid item>
                 <Stack spacing={1}>
@@ -150,7 +166,7 @@ function useJsonDownloadUrl(
   const [url, setUrl] = useState<string | undefined>(undefined);
   const data = JSON.stringify(photo_metrics || []);
   useEffect(() => {
-    if (photo_metrics == undefined) {
+    if (photo_metrics === undefined) {
       return;
     }
 
@@ -158,7 +174,7 @@ function useJsonDownloadUrl(
     const url = URL.createObjectURL(blob);
     setUrl(url);
     return () => URL.revokeObjectURL(url);
-  }, [data]);
+  }, [data, photo_metrics]);
   return url;
 }
 
@@ -177,7 +193,7 @@ function useCSVDownloadUrl(
       )
       .reduce((a, b) => `${a}\n${b}`);
   useEffect(() => {
-    if (photo_metrics == undefined) {
+    if (photo_metrics === undefined) {
       return;
     }
 
@@ -185,7 +201,7 @@ function useCSVDownloadUrl(
     const url = URL.createObjectURL(blob);
     setUrl(url);
     return () => URL.revokeObjectURL(url);
-  }, [data]);
+  }, [data, photo_metrics]);
   return url;
 }
 

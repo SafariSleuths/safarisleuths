@@ -1,5 +1,3 @@
-import { useEffect, useState } from "react";
-
 export type Status = "ok" | "error";
 
 export interface SpeciesCount {
@@ -9,10 +7,11 @@ export interface SpeciesCount {
 
 export interface PhotoMetrics {
   file: string;
+  annotated_file: string;
   predictions: Array<SpeciesCount>;
 }
 
-export interface PhotoMetricsRequest {
+export interface PredictRequest {
   files: Array<string>;
 }
 
@@ -22,22 +21,8 @@ export interface ApiResponse {
   error: string | undefined;
 }
 
-export function usePhotoMetrics(
-  req: PhotoMetricsRequest
-): ApiResponse | undefined {
-  const [apiResponse, setApiResponse] = useState<ApiResponse | undefined>(
-    undefined
-  );
-  useEffect(() => {
-    fetchPhotoMetrics(req).then((data) => setApiResponse(data));
-  }, [req.files.join(",")]);
-  return apiResponse;
-}
-
-export function fetchPhotoMetrics(
-  req: PhotoMetricsRequest
-): Promise<ApiResponse> {
-  return fetch("/api/v1/predict_counts", {
+export function fetchPhotoMetrics(req: PredictRequest): Promise<ApiResponse> {
+  return fetch("/api/v1/predict", {
     method: "POST",
     headers: {
       Accept: "application/json",
@@ -46,5 +31,5 @@ export function fetchPhotoMetrics(
     body: JSON.stringify(req),
   })
     .then((resp) => resp.json())
-    .then((data) => data as ApiResponse);
+    .catch((reason) => console.log(reason));
 }
