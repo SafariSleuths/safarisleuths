@@ -1,5 +1,6 @@
 import os.path
-from typing import Any, Tuple, List, NamedTuple, TypedDict
+import zlib
+from typing import Any, Tuple, List, TypedDict
 import torch
 import numpy as np
 from torchvision.models import detection
@@ -12,14 +13,16 @@ model = detection.fasterrcnn_resnet50_fpn(pretrained=True)
 model.eval()
 
 
-class Box(TypedDict):
+class BoundingBox(TypedDict):
     start: Tuple[int, int]
     end: Tuple[int, int]
     confidence: float
     label: str
+    species: str
+    animal_id: int
 
 
-def process_image(input_path: str, output_path: str) -> List[Box]:
+def process_image(input_path: str, output_path: str) -> List[BoundingBox]:
     image = cv2.imread(input_path)
     predictions = predict_objects(image.copy())
     boxes = prediction_to_boxes(predictions)
@@ -38,8 +41,8 @@ def predict_objects(image: Any) -> Any:
     return model(image)[0]
 
 
-def prediction_to_boxes(detections: Any) -> List[Box]:
-    boxes: List[Box] = []
+def prediction_to_boxes(detections: Any) -> List[BoundingBox]:
+    boxes: List[BoundingBox] = []
     for i in range(0, len(detections["boxes"])):
         idx = int(detections["labels"][i])
         if idx != 24:  # Zebra
@@ -51,16 +54,20 @@ def prediction_to_boxes(detections: Any) -> List[Box]:
 
         box = detections["boxes"][i].detach().cpu().numpy()
         (startX, startY, endX, endY) = box.astype("int")
-        boxes.append(Box(
+        boxes.append(BoundingBox(
             start=(int(startX), int(startY)),
             end=(int(endX), int(endY)),
             confidence=float(confidence),
-            label='zebra'
+            label='zebra',
+            species='zebra',
+            # TODO: Compute a real animal id based on the animal's features.
+            # CRC hash function returns a unique id for each set of coordinates.
+            animal_id=zlib.crc32(f'({startX},{startY})({endX},{endY})'.encode())
         ))
     return boxes
 
 
-def draw_bounding_boxes(image: Any, boxes: List[Box]) -> Any:
+def draw_bounding_boxes(image: Any, boxes: List[BoundingBox]) -> Any:
     for box in boxes:
         label = f"{box['label']}: {box['confidence'] * 100:.2f}%"
         cv2.rectangle(image, box['start'], box['end'], box_color, 2)

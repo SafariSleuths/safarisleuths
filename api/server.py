@@ -1,12 +1,11 @@
 import os.path
 import secrets
-from typing import TypedDict, List
+from typing import List, TypedDict
 
 import flask
 from flask import request, send_from_directory
 
-from api.model import process_image
-from api_response import ApiResponse, Status, PhotoMetrics, Prediction
+from api.model import process_image, BoundingBox
 
 app = flask.Flask(__name__, static_url_path='', static_folder='ui/build')
 
@@ -18,7 +17,7 @@ def data_download(name):
 
 @app.route('/api/v1/session', methods=['GET'])
 def session():
-    return ApiResponse(Status.OK, session=secrets.token_hex(16)).to_dict()
+    return {'status': 'ok', 'session': secrets.token_hex(16)}
 
 
 @app.route('/api/v1/list_files', methods=['POST'])
@@ -53,23 +52,81 @@ def delete_files():
     return {'status': 'ok', 'deleted': deleted}
 
 
+class AnimalPrediction(TypedDict):
+    species: str
+    animal_id: int
+    boxes: List[BoundingBox]
+
+
+class ImagePredictions(TypedDict):
+    file: str
+    annotated_url: str
+    predictions: List[AnimalPrediction]
+
+
+class AnimalSummary(TypedDict):
+    animal_id: int
+    species: str
+    appearances: int
+
+
+class PredictionResponse(TypedDict):
+    status: str
+    results: List[ImagePredictions]
+    summary: List[AnimalSummary]
+
+
 @app.route('/api/v1/predict', methods=['POST'])
 def predict():
     session_id = 0
-    metrics: List[PhotoMetrics] = []
+
+    image_predictions: List[ImagePredictions] = []
     for file_name in os.listdir(f'data/inputs/{session_id}'):
         file_name = os.path.basename(file_name)
         input_file = f'data/inputs/{session_id}/{file_name}'
         output_file = f'data/outputs/{session_id}/{file_name}'
         boxes = process_image(input_file, output_file)
-        metrics.append(PhotoMetrics(
-            file=file_name,
-            annotated_file=f'/{output_file}',
-            predictions=[Prediction(animal='zebra', count=len(boxes), boxes=boxes)]
-        ))
 
-    metrics.sort(key=lambda a: a['file'])
-    return ApiResponse(status=Status.OK, photo_metrics=metrics).to_dict()
+        # The untrained model (resnet) makes one box prediction per zebra.
+        # Once we fine-tune, we can expect to have multiple boxes per zebra that indicate
+        # the different features: tail, feet, head, etc.
+        boxes_by_animal_id = {}
+        for box in boxes:
+            animal_id = box['animal_id']
+            if animal_id not in boxes_by_animal_id:
+                boxes_by_animal_id[animal_id] = []
+            boxes_by_animal_id[animal_id].append(box)
+
+        image_predictions.append(ImagePredictions(
+            file=file_name,
+            annotated_url=f'/{output_file}',
+            predictions=[
+                AnimalPrediction(
+                    species='zebra',
+                    animal_id=animal_id,
+                    boxes=boxes_by_animal_id[animal_id]
+                ) for animal_id in boxes_by_animal_id
+            ]
+        ))
+    image_predictions.sort(key=lambda a: a['file'])
+
+    appearances_by_animal_id = {}
+    for image_prediction in image_predictions:
+        for prediction in image_prediction['predictions']:
+            animal_id = prediction['animal_id']
+            if animal_id not in appearances_by_animal_id:
+                appearances_by_animal_id[animal_id] = 0
+            appearances_by_animal_id[animal_id] += 1
+    summary = [
+        AnimalSummary(
+            animal_id=animal_id,
+            species='zebra',
+            appearances=appearances_by_animal_id[animal_id]
+        ) for animal_id in appearances_by_animal_id
+    ]
+    summary.sort(key=lambda a: a['animal_id'])
+
+    return PredictionResponse(status='ok', results=image_predictions, summary=summary)
 
 
 if __name__ == "__main__":

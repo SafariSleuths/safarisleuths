@@ -1,6 +1,5 @@
 import React, { useEffect, useState } from "react";
 import { Button, CircularProgress, FormControl, Stack } from "@mui/material";
-import { ApiResponse, PredictRequest, Status } from "./ApiRequest";
 
 export function UploadMenu(props: { sessionID: string }) {
   const [uploadedFiles, setUploadedFiles] = useState<Array<string> | undefined>(
@@ -9,7 +8,9 @@ export function UploadMenu(props: { sessionID: string }) {
 
   useEffect(() => {
     if (uploadedFiles === undefined) {
-      fetchListFiles({}).then((data) => setUploadedFiles(data.images));
+      fetchListFiles({ session_id: props.sessionID }).then((data) =>
+        setUploadedFiles(data.images)
+      );
     }
   });
 
@@ -94,10 +95,12 @@ function uploadFiles(files: FileList | null): Promise<Array<string>> {
     .then((data) => data["images"] as Array<string>);
 }
 
-interface ListFilesRequest {}
+interface ListFilesRequest {
+  session_id: string;
+}
 
 interface ListFilesResponse {
-  status: Status;
+  status: string;
   images: Array<string>;
 }
 
