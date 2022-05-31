@@ -63,8 +63,8 @@ export function Results(props: { sessionID: string }) {
           <h3>Prediction Summary</h3>
           <PredictionSummary summary={predictionResponse?.summary} />
           <h3>Image Breakdown</h3>
-          {predictionResponse?.results.map((imagePredictions) => (
-            <ImageBreakdown imagePredictions={imagePredictions} />
+          {predictionResponse?.results.map((imagePredictions, i) => (
+            <ImageBreakdown imagePredictions={imagePredictions} key={i} />
           ))}
         </Stack>
       )}
@@ -89,7 +89,7 @@ function PredictionSummary(props: {
           </TableHead>
           <TableBody>
             {props.summary?.map((summary, i) => (
-              <TableRow>
+              <TableRow key={i}>
                 <TableCell>{i + 1}</TableCell>
                 <TableCell>{summary.animal_id}</TableCell>
                 <TableCell>{summary.species}</TableCell>
