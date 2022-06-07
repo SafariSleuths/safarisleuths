@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { Button, CircularProgress, FormControl, Stack } from "@mui/material";
 
 export function UploadMenu(props: { sessionID: string }) {
@@ -14,14 +14,15 @@ export function UploadMenu(props: { sessionID: string }) {
     }
   });
 
+  const inputRef = useRef<HTMLInputElement>(null);
   const [selectedFiles, setSelectedFiles] = useState<FileList | null>(null);
-
   const [showLoading, setShowLoading] = useState(false);
   return (
     <Stack spacing={2}>
       <h2>Source Files</h2>
       <FormControl>
         <input
+          ref={inputRef}
           multiple={true}
           accept={"image/jpeg,image/png"}
           type={"file"}
@@ -36,6 +37,9 @@ export function UploadMenu(props: { sessionID: string }) {
               setSelectedFiles(null);
               setUploadedFiles([...uploaded, ...(uploadedFiles ?? [])]);
             });
+            if (inputRef.current != null) {
+              inputRef.current.value = "";
+            }
           }}
         >
           Upload Photos

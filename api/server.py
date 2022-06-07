@@ -2,12 +2,29 @@ import os.path
 import secrets
 from typing import List, TypedDict
 
+import boto3
+
 import flask
 from flask import request, send_from_directory
 
 from api.model import process_image, BoundingBox
 
+S3_ACCESS_KEY = os.getenv('S3_ACCESS_KEY')
+S3_SECRET_KEY = os.getenv('S3_SECRET_KEY')
+S3_BUCKET_URL = 'http://capstone-w210-website-data.s3-website-us-east-1.amazonaws.com'
+LOCAL_INPUTS_PATH = 'data/inputs'
+LOCAL_OUTPUTS_PATH = 'data/outputs'
+S3_INPUTS_PATH = 'inputs'
+S3_OUTPUTS_PATH = 'outputs'
+
 app = flask.Flask(__name__, static_url_path='', static_folder='ui/build')
+
+s3 = boto3.resource(
+    's3',
+    aws_access_key_id=S3_ACCESS_KEY,
+    aws_secret_access_key=S3_SECRET_KEY,
+)
+s3_bucket = s3.Bucket('capstone-w210-website-data')
 
 
 @app.route('/data/<path:name>')
@@ -23,7 +40,7 @@ def session():
 @app.route('/api/v1/list_files', methods=['POST'])
 def list_images():
     session_id = 0
-    images = [f'data/inputs/{session_id}/{name}' for name in os.listdir(f'data/inputs/{session_id}')]
+    images = [f'{S3_BUCKET_URL}/{o.key}' for o in s3_bucket.objects.filter(Prefix=f'{S3_INPUTS_PATH}/{session_id}')]
     images.sort()
     return {'status': 'ok', 'images': images}
 
@@ -31,12 +48,15 @@ def list_images():
 @app.route('/api/v1/upload_files', methods=['POST'])
 def upload_files():
     session_id = 0
+
     uploaded_files = []
     for file_name in request.files:
-        os.makedirs(f'data/inputs/{session_id}', exist_ok=True)
-        upload_path = f'data/inputs/{session_id}/{os.path.basename(file_name)}'
-        request.files[file_name].save(upload_path)
-        uploaded_files.append(upload_path)
+        os.makedirs(f'{LOCAL_INPUTS_PATH}/{session_id}', exist_ok=True)
+        local_path = f'{LOCAL_INPUTS_PATH}/{session_id}/{os.path.basename(file_name)}'
+        request.files[file_name].save(local_path)
+        s3_path = f'{S3_INPUTS_PATH}/{session_id}/{os.path.basename(file_name)}'
+        s3_bucket.upload_file(local_path, s3_path)
+        uploaded_files.append(f'{S3_BUCKET_URL}/{S3_INPUTS_PATH}/{session_id}/{os.path.basename(file_name)}')
     return {'status': 'ok', 'images': uploaded_files}
 
 
@@ -45,10 +65,15 @@ def delete_files():
     session_id = 0
     data = request.get_json()
     deleted = []
+    s3_bucket.delete_objects(Delete={
+        'Objects': [{'Key': f'{S3_INPUTS_PATH}/{session_id}/{name}'} for name in data['files']]
+    })
+
     for file_name in data['files']:
-        file_path = f'data/inputs/{session_id}/{os.path.basename(file_name)}'
+        file_path = f'{LOCAL_INPUTS_PATH}/{session_id}/{os.path.basename(file_name)}'
         os.remove(file_path)
         deleted.append(file_path)
+
     return {'status': 'ok', 'deleted': deleted}
 
 
@@ -81,11 +106,13 @@ def predict():
     session_id = 0
 
     image_predictions: List[ImagePredictions] = []
-    for file_name in os.listdir(f'data/inputs/{session_id}'):
+    for file_name in os.listdir(f'{LOCAL_INPUTS_PATH}/{session_id}'):
         file_name = os.path.basename(file_name)
-        input_file = f'data/inputs/{session_id}/{file_name}'
-        output_file = f'data/outputs/{session_id}/{file_name}'
+        input_file = f'{LOCAL_INPUTS_PATH}/{session_id}/{file_name}'
+        output_file = f'{LOCAL_OUTPUTS_PATH}/{session_id}/{file_name}'
         boxes = process_image(input_file, output_file)
+
+        s3_bucket.upload_file(output_file, f'{S3_OUTPUTS_PATH}/{session_id}/{file_name}')
 
         # The untrained model (resnet) makes one box prediction per zebra.
         # Once we fine-tune, we can expect to have multiple boxes per zebra that indicate
@@ -99,7 +126,7 @@ def predict():
 
         image_predictions.append(ImagePredictions(
             file=file_name,
-            annotated_url=f'/{output_file}',
+            annotated_url=f'{S3_BUCKET_URL}/{S3_OUTPUTS_PATH}/{session_id}/{file_name}',
             predictions=[
                 AnimalPrediction(
                     species='zebra',
