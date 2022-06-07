@@ -19,11 +19,7 @@ S3_OUTPUTS_PATH = 'outputs'
 
 app = flask.Flask(__name__, static_url_path='', static_folder='ui/build')
 
-s3 = boto3.resource(
-    's3',
-    aws_access_key_id=S3_ACCESS_KEY,
-    aws_secret_access_key=S3_SECRET_KEY,
-)
+s3 = boto3.resource('s3', aws_access_key_id=S3_ACCESS_KEY, aws_secret_access_key=S3_SECRET_KEY)
 s3_bucket = s3.Bucket('capstone-w210-website-data')
 
 
@@ -32,21 +28,40 @@ def data_download(name):
     return send_from_directory('data', name)
 
 
+class SessionResponse(TypedDict):
+    status: str
+    session_id: str
+
+
 @app.route('/api/v1/session', methods=['GET'])
-def session():
-    return {'status': 'ok', 'session': secrets.token_hex(16)}
+def session() -> SessionResponse:
+    return {'status': 'ok', 'session_id': secrets.token_hex(16)}
+
+
+class ListFilesRequest(TypedDict):
+    session_id: str
+
+
+class ListFilesResponse(TypedDict):
+    status: str
+    images: List[str]
 
 
 @app.route('/api/v1/list_files', methods=['POST'])
-def list_images():
+def list_images() -> ListFilesResponse:
     session_id = 0
     images = [f'{S3_BUCKET_URL}/{o.key}' for o in s3_bucket.objects.filter(Prefix=f'{S3_INPUTS_PATH}/{session_id}')]
     images.sort()
     return {'status': 'ok', 'images': images}
 
 
+class UploadFilesResponse(TypedDict):
+    status: str
+    images: List[str]
+
+
 @app.route('/api/v1/upload_files', methods=['POST'])
-def upload_files():
+def upload_files() -> UploadFilesResponse:
     session_id = 0
 
     uploaded_files = []
@@ -60,10 +75,20 @@ def upload_files():
     return {'status': 'ok', 'images': uploaded_files}
 
 
+class DeleteFilesRequest(TypedDict):
+    session_id: int
+    files: List[str]
+
+
+class DeleteFilesResponse(TypedDict):
+    status: str
+    deleted: List[str]
+
+
 @app.route('/api/v1/delete_files', methods=['POST'])
-def delete_files():
+def delete_files() -> DeleteFilesResponse:
     session_id = 0
-    data = request.get_json()
+    data: DeleteFilesRequest = request.get_json()
     deleted = []
     s3_bucket.delete_objects(Delete={
         'Objects': [{'Key': f'{S3_INPUTS_PATH}/{session_id}/{name}'} for name in data['files']]
@@ -75,6 +100,10 @@ def delete_files():
         deleted.append(file_path)
 
     return {'status': 'ok', 'deleted': deleted}
+
+
+class PredictionRequest(TypedDict):
+    session_id: int
 
 
 class AnimalPrediction(TypedDict):
