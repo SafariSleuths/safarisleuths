@@ -6,8 +6,10 @@ import numpy as np
 from torchvision.models import detection
 import cv2
 
-min_confidence = 0.75
-box_color = (255, 0, 0)
+RESNET_LABEL_ZEBRA = 24
+
+MIN_CONFIDENCE = 0.75
+BOX_COLOR = (255, 0, 0)  # Blue
 
 model = detection.fasterrcnn_resnet50_fpn(pretrained=True)
 model.eval()
@@ -45,11 +47,11 @@ def prediction_to_boxes(detections: Any) -> List[BoundingBox]:
     boxes: List[BoundingBox] = []
     for i in range(0, len(detections["boxes"])):
         idx = int(detections["labels"][i])
-        if idx != 24:  # Zebra
+        if idx != RESNET_LABEL_ZEBRA:
             continue
 
         confidence = detections["scores"][i]
-        if min_confidence > confidence:
+        if MIN_CONFIDENCE > confidence:
             continue
 
         box = detections["boxes"][i].detach().cpu().numpy()
@@ -70,11 +72,11 @@ def prediction_to_boxes(detections: Any) -> List[BoundingBox]:
 def draw_bounding_boxes(image: Any, boxes: List[BoundingBox]) -> Any:
     for box in boxes:
         label = f"{box['label']}: {box['confidence'] * 100:.2f}%"
-        cv2.rectangle(image, box['start'], box['end'], box_color, 2)
+        cv2.rectangle(image, box['start'], box['end'], BOX_COLOR, 2)
         (text_x, text_y) = box['start']
         if text_y > 15:
             text_y -= 15
         else:
             text_y += 15
-        cv2.putText(image, label, (text_x, text_y), cv2.FONT_HERSHEY_SIMPLEX, 0.5, box_color, 2)
+        cv2.putText(image, label, (text_x, text_y), cv2.FONT_HERSHEY_SIMPLEX, 0.5, BOX_COLOR, 2)
     return image
