@@ -7,7 +7,7 @@ import { UploadMenu } from "./UploadMenu";
 export default function App() {
   return (
     <Box paddingX={6} paddingBottom={4}>
-      <h1>Zebra Counter</h1>
+      <h1>Individual Counter</h1>
       <Grid container spacing={2}>
         <Grid item xs={3}>
           <Box width={300}>

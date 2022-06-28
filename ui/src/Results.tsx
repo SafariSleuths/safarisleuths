@@ -4,7 +4,9 @@ import {
   Button,
   ButtonGroup,
   CircularProgress,
-  Grid,
+  ImageList,
+  ImageListItem,
+  ImageListItemBar,
   Paper,
   Stack,
   Table,
@@ -13,6 +15,12 @@ import {
   TableHead,
   TableRow,
 } from "@mui/material";
+
+import Accordion from "@mui/material/Accordion";
+import AccordionSummary from "@mui/material/AccordionSummary";
+import AccordionDetails from "@mui/material/AccordionDetails";
+
+import { Download, ExpandMore, Upload } from "@mui/icons-material";
 
 export function Results(props: { sessionID: string }) {
   const [predictionResponse, setPredictionResponse] = useState<
@@ -30,27 +38,24 @@ export function Results(props: { sessionID: string }) {
     });
   }
 
-  const jsonDownloadUrl = useJsonDownloadUrl(predictionResponse?.results);
-  const csvDownloadUrl = useCSVDownloadUrl(predictionResponse?.results);
+  const jsonDownloadUrl = useJsonDownloadUrl(predictionResponse?.annotations);
+
+  const annotationsByName = (predictionResponse?.annotations || []).reduce(
+    (a, b) => a.set(b.name, [...(a.get(b.name) || []), b]),
+    new Map<string, Array<Annotation>>()
+  );
 
   return (
     <Stack spacing={2}>
       <h2>Prediction Results</h2>
-      <ButtonGroup>
+      <ButtonGroup variant={"text"}>
         <Button onClick={getPredictions}>Compute Results</Button>
         <Button
           href={jsonDownloadUrl || "#"}
           disabled={jsonDownloadUrl === undefined}
           download={"results.json"}
         >
-          Download JSON
-        </Button>
-        <Button
-          href={csvDownloadUrl || "#"}
-          disabled={csvDownloadUrl === undefined}
-          download={"results.csv"}
-        >
-          Download CSV
+          <Download /> Annotations (COCO)
         </Button>
       </ButtonGroup>
 
@@ -60,11 +65,34 @@ export function Results(props: { sessionID: string }) {
         </Box>
       ) : (
         <Stack spacing={4}>
-          <h3>Prediction Summary</h3>
-          <PredictionSummary summary={predictionResponse?.summary} />
-          <h3>Image Breakdown</h3>
-          {predictionResponse?.results.map((imagePredictions, i) => (
-            <ImageBreakdown imagePredictions={imagePredictions} key={i} />
+          <Paper>
+            <Box margin={2}>
+              <Table size={"small"}>
+                <TableHead>
+                  <TableRow>
+                    <TableCell>#</TableCell>
+                    <TableCell>Animal ID</TableCell>
+                    <TableCell>Species</TableCell>
+                    <TableCell>Appearances</TableCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {Array.from(annotationsByName).map(
+                    ([name, annotations], i) => (
+                      <TableRow>
+                        <TableCell>{i + 1}</TableCell>
+                        <TableCell>{name}</TableCell>
+                        <TableCell>Leopard</TableCell>
+                        <TableCell>{annotations.length}</TableCell>
+                      </TableRow>
+                    )
+                  )}
+                </TableBody>
+              </Table>
+            </Box>
+          </Paper>
+          {Array.from(annotationsByName).map(([name, annotations]) => (
+            <AnimalBreakdown name={name} annotations={annotations} key={name} />
           ))}
         </Stack>
       )}
@@ -72,98 +100,58 @@ export function Results(props: { sessionID: string }) {
   );
 }
 
-function PredictionSummary(props: {
-  summary: Array<AnimalSummary> | undefined;
+function AnimalBreakdown(props: {
+  name: string;
+  annotations: Array<Annotation>;
 }) {
   return (
-    <Paper elevation={2}>
-      <Stack padding={2}>
-        <Table size={"small"}>
-          <TableHead>
-            <TableRow>
-              <TableCell>#</TableCell>
-              <TableCell>Animal ID</TableCell>
-              <TableCell>Species</TableCell>
-              <TableCell>Appearances</TableCell>
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            {props.summary?.map((summary, i) => (
-              <TableRow key={i}>
-                <TableCell>{i + 1}</TableCell>
-                <TableCell>{summary.animal_id}</TableCell>
-                <TableCell>{summary.species}</TableCell>
-                <TableCell>{summary.appearances}</TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      </Stack>
-    </Paper>
-  );
-}
-
-function ImageBreakdown(props: { imagePredictions: ImagePredictions }) {
-  return (
-    <Paper elevation={2}>
-      <Stack marginX={2}>
-        <h4>{props.imagePredictions.file}</h4>
-        <Grid container spacing={4} padding={2}>
-          <Grid item>
-            <Stack spacing={1}>
-              <a href={"localhost:5000" + props.imagePredictions.annotated_url}>
+    <Box>
+      <Accordion defaultExpanded={true}>
+        <AccordionSummary expandIcon={<ExpandMore />}>
+          <h3>
+            Animal ID: {props.name} ({props.annotations.length} images)
+          </h3>
+        </AccordionSummary>
+        <AccordionDetails>
+          <ImageList cols={4} gap={12}>
+            {props.annotations.map((annotation) => (
+              <ImageListItem key={annotation.image_src}>
                 <img
-                  src={props.imagePredictions.annotated_url}
-                  alt={props.imagePredictions.annotated_url}
-                  width={500}
+                  src={annotation.annotated_image_src}
+                  srcSet={annotation.annotated_image_src}
+                  alt={annotation.annotated_image_src}
+                  loading="lazy"
                 />
-              </a>
-              <ButtonGroup fullWidth={true}>
-                <Button>Accept</Button>
-                <Button>Make Corrections</Button>
-              </ButtonGroup>
-            </Stack>
-          </Grid>
-          <Grid item>
-            <Stack spacing={1}>
-              <h4>Predictions</h4>
-              <Table size={"small"}>
-                <TableHead>
-                  <TableRow>
-                    <TableCell>#</TableCell>
-                    <TableCell>Animal ID</TableCell>
-                    <TableCell>Species</TableCell>
-                    <TableCell>Confidence</TableCell>
-                  </TableRow>
-                </TableHead>
-                <TableBody>
-                  {props.imagePredictions.predictions.map((m, i) => (
-                    <TableRow key={i}>
-                      <TableCell>{i + 1}</TableCell>
-                      <TableCell>{m.animal_id}</TableCell>
-                      <TableCell>{m.species}</TableCell>
-                      <TableCell>
-                        {(m.boxes[0].confidence * 100).toLocaleString()} %
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </Stack>
-          </Grid>
-        </Grid>
-      </Stack>
-    </Paper>
+                <ImageListItemBar
+                  position={"top"}
+                  subtitle={`Confidence: ${
+                    Math.floor(Math.random() * 50 + 950) / 10.0
+                  }%`}
+                />
+                <ButtonGroup variant={"text"} fullWidth>
+                  <Button size={"small"} href={"#"}>
+                    <Download /> Annotations
+                  </Button>
+                  <Button size={"small"} href={"#"}>
+                    <Upload /> Corrections
+                  </Button>
+                </ButtonGroup>
+              </ImageListItem>
+            ))}
+          </ImageList>
+        </AccordionDetails>
+      </Accordion>
+    </Box>
   );
 }
 
 function useJsonDownloadUrl(
-  predictions: Array<ImagePredictions> | undefined
+  annotations: Array<Annotation> | undefined
 ): string | undefined {
   const [url, setUrl] = useState<string | undefined>(undefined);
-  const data = JSON.stringify(predictions || []);
+  const data = JSON.stringify({ annotations: annotations });
   useEffect(() => {
-    if (predictions === undefined) {
+    if (annotations === undefined) {
       return;
     }
 
@@ -171,72 +159,20 @@ function useJsonDownloadUrl(
     const url = URL.createObjectURL(blob);
     setUrl(url);
     return () => URL.revokeObjectURL(url);
-  }, [data, predictions]);
+  }, [data, annotations]);
   return url;
 }
 
-function useCSVDownloadUrl(
-  photo_metrics: Array<ImagePredictions> | undefined
-): string | undefined {
-  const [url, setUrl] = useState<string | undefined>(undefined);
-  const data: string =
-    "File,AnimalID,Species\n" +
-    photo_metrics
-      ?.flatMap((metrics) =>
-        metrics.predictions.map(
-          (prediction) =>
-            `${metrics.file},${prediction.animal_id},${prediction.species}`
-        )
-      )
-      .reduce((a, b) => `${a}\n${b}`);
-  useEffect(() => {
-    if (photo_metrics === undefined) {
-      return;
-    }
-
-    const blob = new Blob([data], { type: "text/csv" });
-    const url = URL.createObjectURL(blob);
-    setUrl(url);
-    return () => URL.revokeObjectURL(url);
-  }, [data, photo_metrics]);
-  return url;
-}
-
-export interface BoundingBox {
-  start: Array<number>;
-  end: Array<number>;
-  confidence: number;
-  label: string;
-  species: string;
-  animal_id: number;
-}
-
-export interface AnimalPrediction {
-  species: string;
-  animal_id: number;
-  boxes: Array<BoundingBox>;
-}
-
-export interface ImagePredictions {
-  file: string;
-  annotated_url: string;
-  predictions: Array<AnimalPrediction>;
-}
-
-interface AnimalSummary {
-  animal_id: number;
-  species: string;
-  appearances: number;
-}
+interface PredictionRequest {}
 
 interface PredictionResponse {
-  status: string;
-  summary: Array<AnimalSummary>;
-  results: Array<ImagePredictions>;
+  annotations: Array<Annotation>;
 }
 
-export interface PredictionRequest {
-  session_id: string;
+interface Annotation {
+  image_src: string;
+  annotated_image_src: string;
+  name: string;
 }
 
 export function fetchPredictions(
