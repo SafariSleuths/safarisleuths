@@ -1,5 +1,11 @@
 import React, { useEffect, useRef, useState } from "react";
-import { Button, CircularProgress, FormControl, Stack } from "@mui/material";
+import {
+  Box,
+  Button,
+  CircularProgress,
+  FormControl,
+  Stack,
+} from "@mui/material";
 
 export function UploadMenu(props: { sessionID: string }) {
   const [uploadedFiles, setUploadedFiles] = useState<Array<string> | undefined>(
@@ -45,10 +51,16 @@ export function UploadMenu(props: { sessionID: string }) {
           Upload Photos
         </Button>
       </FormControl>
-      <Stack>
-        {showLoading ? <CircularProgress /> : <div />}
+      <Box hidden={!showLoading}>
+        <CircularProgress />{" "}
+      </Box>
+
+      <Stack
+        alignItems={"center"}
+        sx={{ maxHeight: "70vh", overflow: "scroll" }}
+      >
         {uploadedFiles?.map((src, i) => (
-          <Stack alignItems={"center"} key={i}>
+          <Box key={i}>
             <p>{src.slice(src.lastIndexOf("/") + 1)}</p>
             <img src={src} alt={src} width={250} />
             <Button
@@ -61,7 +73,7 @@ export function UploadMenu(props: { sessionID: string }) {
             >
               Delete
             </Button>
-          </Stack>
+          </Box>
         ))}
       </Stack>
     </Stack>

@@ -1,6 +1,7 @@
 import json
 import os.path
 import secrets
+import zlib
 from typing import List, TypedDict, Any, Dict
 
 import flask
@@ -39,8 +40,11 @@ def list_files() -> ListFilesResponse:
 
 @app.route('/api/v1/predict', methods=['POST'])
 def predict():
-    return send_from_directory('website-data', 'demo/annotations.json')
-
+    with open('website-data/demo/annotations.json') as f:
+        blob = json.load(f)
+    for k in blob['annotations']:
+        k['confidence'] = (zlib.crc32(bytes(k['image_src'],'utf8')) % 20 + 80) / 100
+    return blob
 
 if __name__ == "__main__":
     app.run()
