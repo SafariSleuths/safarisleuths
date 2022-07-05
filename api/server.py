@@ -43,8 +43,30 @@ def predict():
     with open('website-data/demo/annotations.json') as f:
         blob = json.load(f)
     for k in blob['annotations']:
-        k['confidence'] = (zlib.crc32(bytes(k['image_src'],'utf8')) % 20 + 80) / 100
+        k['confidence'] = (zlib.crc32(bytes(k['image_src'], 'utf8')) % 20 + 80) / 100
     return blob
+
+
+@app.route('/api/v1/annotations', methods=['GET', 'POST'])
+def annotations():
+    with open('website-data/demo/annotations.json') as f:
+        blob = json.load(f)
+
+    if request.method == 'GET':
+        return blob
+
+    annotation_by_id = {annotation['id']: annotation for annotation in blob['annotations']}
+
+    if request.method == 'POST':
+        updates = request.get_json()
+        for annotation in updates:
+            annotation_by_id[annotation['id']] = annotation
+        blob = [annotation for annotation in annotation_by_id.values()]
+        with open('website-data/demo/annotations.json') as f:
+            json.dump(blob, f)
+
+    return blob
+
 
 if __name__ == "__main__":
     app.run()

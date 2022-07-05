@@ -25,7 +25,15 @@ import Accordion from "@mui/material/Accordion";
 import AccordionSummary from "@mui/material/AccordionSummary";
 import AccordionDetails from "@mui/material/AccordionDetails";
 
-import { Download, ExpandMore, Upload } from "@mui/icons-material";
+import {
+  Download,
+  ExpandMore,
+  Upload,
+  ContentCopy,
+  CopyAll,
+  Edit,
+  Check,
+} from "@mui/icons-material";
 
 const MinConfidence = 0.89;
 
@@ -172,8 +180,7 @@ function AnimalImageList(props: { annotations: Array<Annotation> }) {
 }
 
 function AnnotationButtonsAndModal(props: { annotation: Annotation }) {
-  const data = JSON.stringify(props.annotation, null, 2);
-  const [showAnnotations, setShowAnnotations] = React.useState(false);
+  const annotationJSON = JSON.stringify(props.annotation, null, 2);
   const [showForm, setShowForm] = React.useState(false);
   const [formError, setFormError] = React.useState<null | string>(null);
   const inputRef = React.useRef<HTMLInputElement>(null);
@@ -192,26 +199,20 @@ function AnnotationButtonsAndModal(props: { annotation: Annotation }) {
   return (
     <>
       <ButtonGroup variant={"text"} fullWidth>
-        <Button size={"small"} onClick={() => setShowAnnotations(true)}>
-          <Download /> Annotations
-        </Button>
+        <CopyButton annotationJSON={annotationJSON} />
         <Button size={"small"} onClick={() => setShowForm(true)}>
-          <Upload /> Corrections
+          <Edit /> Corrections
         </Button>
       </ButtonGroup>
-      <Modal open={showAnnotations} onClose={() => setShowAnnotations(false)}>
-        <Box sx={boxStyle} textOverflow={"scroll"} minWidth={750}>
-          <pre style={{ maxHeight: "500px", overflow: "scroll" }}>{data}</pre>
-        </Box>
-      </Modal>
       <Modal open={showForm} onClose={() => setShowForm(false)}>
         <Box sx={boxStyle} overflow={"scroll"} width={750}>
           <TextField
             ref={inputRef}
             fullWidth
-            label={"COCO Annotation"}
+            label={"COCO JSON"}
             multiline
             rows={25}
+            defaultValue={annotationJSON}
             onChange={(e) => {
               try {
                 JSON.parse(e.target.value);
@@ -239,6 +240,36 @@ function AnnotationButtonsAndModal(props: { annotation: Annotation }) {
         </Box>
       </Modal>
     </>
+  );
+}
+
+function CopyButton(props: { annotationJSON: string }) {
+  const [copied, setCopied] = React.useState(false);
+  const buttonContent = copied ? (
+    <>
+      <Check /> Copied!
+    </>
+  ) : (
+    <>
+      <ContentCopy /> Annotation
+    </>
+  );
+
+  return (
+    <Button
+      size={"small"}
+      onClick={() =>
+        navigator.clipboard
+          .writeText(props.annotationJSON)
+          .then(() => {
+            setCopied(true);
+            return new Promise((resolve) => setTimeout(resolve, 1000));
+          })
+          .then(() => setCopied(false))
+      }
+    >
+      {buttonContent}
+    </Button>
   );
 }
 
