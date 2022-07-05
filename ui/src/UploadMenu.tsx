@@ -24,7 +24,13 @@ export function UploadMenu(props: { sessionID: string }) {
   const [selectedFiles, setSelectedFiles] = useState<FileList | null>(null);
   const [showLoading, setShowLoading] = useState(false);
   return (
-    <Stack spacing={2}>
+    <Stack
+      spacing={2}
+      sx={{
+        position: "fixed",
+        width: "350",
+      }}
+    >
       <h2>Source Files</h2>
       <FormControl>
         <input
@@ -35,7 +41,7 @@ export function UploadMenu(props: { sessionID: string }) {
           onChange={(e) => setSelectedFiles(e.target.files)}
         />
         <Button
-          disabled={selectedFiles == null}
+          disabled={selectedFiles == null || true}
           onClick={() => {
             setShowLoading(true);
             uploadFiles(selectedFiles).then((uploaded) => {
@@ -57,13 +63,18 @@ export function UploadMenu(props: { sessionID: string }) {
 
       <Stack
         alignItems={"center"}
-        sx={{ maxHeight: "70vh", overflow: "scroll" }}
+        sx={{
+          maxHeight: "65vh",
+          overflow: "scroll",
+          width: 300,
+        }}
       >
         {uploadedFiles?.map((src, i) => (
-          <Box key={i}>
+          <Stack key={i}>
             <p>{src.slice(src.lastIndexOf("/") + 1)}</p>
             <img src={src} alt={src} width={250} />
             <Button
+              disabled
               style={{ width: 250 }}
               onClick={() =>
                 deleteFiles([src]).then(() => {
@@ -73,7 +84,7 @@ export function UploadMenu(props: { sessionID: string }) {
             >
               Delete
             </Button>
-          </Box>
+          </Stack>
         ))}
       </Stack>
     </Stack>

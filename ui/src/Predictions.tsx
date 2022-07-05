@@ -4,21 +4,18 @@ import {
   Button,
   ButtonGroup,
   CircularProgress,
-  Grid,
   ImageList,
   ImageListItem,
   ImageListItemBar,
   Modal,
   Paper,
   Stack,
-  SxProps,
   Table,
   TableBody,
   TableCell,
   TableHead,
   TableRow,
   TextField,
-  Theme,
   Typography,
 } from "@mui/material";
 
@@ -29,9 +26,7 @@ import AccordionDetails from "@mui/material/AccordionDetails";
 import {
   Download,
   ExpandMore,
-  Upload,
   ContentCopy,
-  CopyAll,
   Edit,
   Check,
   Cancel,
@@ -39,10 +34,46 @@ import {
 
 const MinConfidence = 0.89;
 
-export function Results(props: { sessionID: string }) {
+interface PredictionRequest {}
+
+interface PredictionResponse {
+  annotations: Array<Annotation>;
+}
+
+interface Annotation {
+  id: number;
+  name: string;
+  species: string;
+  confidence: number;
+  image_src: string;
+  annotated_image_src: string;
+  reviewed: boolean | undefined;
+  ignored: boolean | undefined;
+}
+
+export function fetchPredictions(
+  req: PredictionRequest
+): Promise<PredictionResponse> {
+  return fetch("/api/v1/predict", {
+    method: "POST",
+    headers: {
+      Accept: "application/json",
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(req),
+  })
+    .then((resp) => resp.json())
+    .catch((reason) => console.log(reason));
+}
+
+export function Predictions(props: { sessionID: string }) {
   const [predictionResponse, setPredictionResponse] = useState<
     PredictionResponse | undefined
   >(undefined);
+
+  const [annotations, setAnnotations] = useState<Array<Annotation> | undefined>(
+    undefined
+  );
 
   const [showLoading, setShowLoading] = useState(false);
 
@@ -51,6 +82,7 @@ export function Results(props: { sessionID: string }) {
     setShowLoading(true);
     fetchPredictions({ session_id: props.sessionID }).then((data) => {
       setPredictionResponse(data);
+      setAnnotations(data.annotations);
       setShowLoading(false);
     });
   }
@@ -58,15 +90,27 @@ export function Results(props: { sessionID: string }) {
   const jsonDownloadUrl = useJsonDownloadUrl(predictionResponse?.annotations);
 
   const lowConfidenceAnnotations = (
-    predictionResponse?.annotations || []
+    annotations || ([] as Array<Annotation>)
   ).filter((a) => a.confidence < MinConfidence);
 
-  const annotationsByName = (predictionResponse?.annotations || [])
+  const annotationsByName: Map<string, Array<Annotation>> = (
+    annotations || ([] as Array<Annotation>)
+  )
     .filter((a) => a.confidence >= MinConfidence)
     .reduce(
       (a, b) => a.set(b.name, [...(a.get(b.name) || []), b]),
       new Map<string, Array<Annotation>>()
     );
+
+  const updateAnnotations = (updates: Array<Annotation>) => {
+    const annotationsById: Map<number, Annotation> = (
+      annotations || ([] as Array<Annotation>)
+    ).reduce((a, b) => a.set(b.id, b), new Map<number, Annotation>());
+    updates.forEach((annotation) =>
+      annotationsById.set(annotation.id, annotation)
+    );
+    setAnnotations(Array.from(annotationsById.values()));
+  };
 
   return (
     <Stack spacing={2}>
@@ -90,33 +134,23 @@ export function Results(props: { sessionID: string }) {
         <Stack spacing={4}>
           <Paper>
             <Box margin={2}>
-              <Table size={"small"}>
-                <TableHead>
-                  <TableRow>
-                    <TableCell>#</TableCell>
-                    <TableCell>Animal ID</TableCell>
-                    <TableCell>Species</TableCell>
-                    <TableCell>Appearances</TableCell>
-                  </TableRow>
-                </TableHead>
-                <TableBody>
-                  {Array.from(annotationsByName).map(
-                    ([name, annotations], i) => (
-                      <TableRow>
-                        <TableCell>{i + 1}</TableCell>
-                        <TableCell>{name}</TableCell>
-                        <TableCell>Leopard</TableCell>
-                        <TableCell>{annotations.length}</TableCell>
-                      </TableRow>
-                    )
-                  )}
-                </TableBody>
-              </Table>
+              <SummaryTable
+                annotationsByName={annotationsByName}
+                lowConfidenceAnnotations={lowConfidenceAnnotations}
+              />
             </Box>
           </Paper>
-          <LowConfidence annotations={lowConfidenceAnnotations} />
+          <LowConfidenceBreakdown
+            annotations={lowConfidenceAnnotations}
+            setAnnotations={updateAnnotations}
+          />
           {Array.from(annotationsByName).map(([name, annotations]) => (
-            <AnimalBreakdown name={name} annotations={annotations} key={name} />
+            <AnimalBreakdown
+              key={name}
+              name={name}
+              annotations={annotations}
+              setAnnotations={updateAnnotations}
+            />
           ))}
         </Stack>
       )}
@@ -124,24 +158,66 @@ export function Results(props: { sessionID: string }) {
   );
 }
 
-function LowConfidence(props: { annotations: Array<Annotation> }) {
-  const reviewed = false;
+function SummaryTable(props: {
+  annotationsByName: Map<string, Array<Annotation>>;
+  lowConfidenceAnnotations: Array<Annotation>;
+}) {
+  const lowConfidenceBySpecies = props.lowConfidenceAnnotations.reduce(
+    (a, b) => a.set(b.species, [...(a.get(b.species) || []), b]),
+    new Map<string, Array<Annotation>>()
+  );
 
+  return (
+    <Table size={"small"}>
+      <TableHead>
+        <TableRow>
+          <TableCell>#</TableCell>
+          <TableCell>Animal ID</TableCell>
+          <TableCell>Species</TableCell>
+          <TableCell>Appearances</TableCell>
+        </TableRow>
+      </TableHead>
+      <TableBody>
+        {Array.from(props.annotationsByName).map(([name, annotations], i) => (
+          <TableRow key={i}>
+            <TableCell>{i + 1}</TableCell>
+            <TableCell>{name}</TableCell>
+            <TableCell>{annotations[0].species}</TableCell>
+            <TableCell>{annotations.length}</TableCell>
+          </TableRow>
+        ))}
+        {Array.from(lowConfidenceBySpecies).map(([species, annotations], i) => (
+          <TableRow key={i}>
+            <TableCell>Ø</TableCell>
+            <TableCell>Low Confidence</TableCell>
+            <TableCell>{species}</TableCell>
+            <TableCell>{annotations.length}</TableCell>
+          </TableRow>
+        ))}
+      </TableBody>
+    </Table>
+  );
+}
+
+function LowConfidenceBreakdown(props: {
+  annotations: Array<Annotation>;
+  setAnnotations: (v: Array<Annotation>) => void;
+}) {
+  const pendingReview = props.annotations.filter((a) => a.reviewed).length;
   return (
     <Box>
       <Accordion defaultExpanded={true}>
         <AccordionSummary expandIcon={<ExpandMore />}>
           <h3>
-            Low Confidence ({props.annotations.length} images)
-            {reviewed ? (
-              <Typography color={"success"}>Reviewed</Typography>
-            ) : (
-              <Typography color={"success"}>Needs Review</Typography>
-            )}
+            Low Confidence ({pendingReview}/{props.annotations.length} images
+            reviewed)
           </h3>
         </AccordionSummary>
         <AccordionDetails>
-          <AnimalImageList annotations={props.annotations} />
+          <AnimalImageList
+            annotations={props.annotations}
+            setAnnotations={props.setAnnotations}
+          />
         </AccordionDetails>
       </Accordion>
     </Box>
@@ -151,6 +227,7 @@ function LowConfidence(props: { annotations: Array<Annotation> }) {
 function AnimalBreakdown(props: {
   name: string;
   annotations: Array<Annotation>;
+  setAnnotations: (v: Array<Annotation>) => void;
 }) {
   return (
     <Box>
@@ -161,25 +238,28 @@ function AnimalBreakdown(props: {
           </h3>
         </AccordionSummary>
         <AccordionDetails>
-          <AnimalImageList annotations={props.annotations} />
+          <AnimalImageList
+            annotations={props.annotations}
+            setAnnotations={props.setAnnotations}
+          />
         </AccordionDetails>
       </Accordion>
     </Box>
   );
 }
 
-function AnimalImageList(props: { annotations: Array<Annotation> }) {
-  const [annotations, setAnnotations] = React.useState(props.annotations);
+function AnimalImageList(props: {
+  annotations: Array<Annotation>;
+  setAnnotations: (v: Array<Annotation>) => void;
+}) {
   return (
     <ImageList cols={4} gap={12}>
-      {annotations.map((annotation, i) => (
+      {props.annotations.map((annotation, i) => (
         <AnnotationImage
           key={i}
           annotation={annotation}
           setAnnotation={(v: Annotation) => {
-            const newAnnotations = [...annotations];
-            newAnnotations[i] = v;
-            setAnnotations(newAnnotations);
+            props.setAnnotations([v]);
           }}
         />
       ))}
@@ -203,7 +283,7 @@ function AnnotationImage(props: {
     subtitle = "✔ Reviewed";
   }
 
-  if (props.annotation.ignore) {
+  if (props.annotation.ignored) {
     subtitle = "❌ Ignored";
   }
 
@@ -316,7 +396,7 @@ function AnnotationButtonsAndModal(props: {
         <Button
           size={"small"}
           onClick={() => {
-            updatedAnnotation.ignore = true;
+            updatedAnnotation.ignored = true;
             submitAnnotation();
           }}
         >
@@ -328,7 +408,7 @@ function AnnotationButtonsAndModal(props: {
           <TextField
             ref={inputRef}
             fullWidth
-            label={"COCO JSON"}
+            label={"Annotation JSON"}
             multiline
             rows={25}
             defaultValue={annotationJSON}
@@ -341,7 +421,7 @@ function AnnotationButtonsAndModal(props: {
             disabled={formError !== null}
             onClick={() => {
               updatedAnnotation.reviewed = true;
-              updatedAnnotation.ignore = false;
+              updatedAnnotation.ignored = false;
               submitAnnotation();
             }}
           >
@@ -399,34 +479,4 @@ function useJsonDownloadUrl(
     return () => URL.revokeObjectURL(url);
   }, [data, annotations]);
   return url;
-}
-
-interface PredictionRequest {}
-
-interface PredictionResponse {
-  annotations: Array<Annotation>;
-}
-
-interface Annotation {
-  image_src: string;
-  annotated_image_src: string;
-  name: string;
-  confidence: number;
-  reviewed: boolean | undefined;
-  ignore: boolean | undefined;
-}
-
-export function fetchPredictions(
-  req: PredictionRequest
-): Promise<PredictionResponse> {
-  return fetch("/api/v1/predict", {
-    method: "POST",
-    headers: {
-      Accept: "application/json",
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify(req),
-  })
-    .then((resp) => resp.json())
-    .catch((reason) => console.log(reason));
 }
