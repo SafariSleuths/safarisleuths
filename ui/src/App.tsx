@@ -7,7 +7,8 @@ import { UploadMenu } from "./UploadMenu";
 export default function App() {
   return (
     <Box paddingX={6} paddingBottom={4}>
-      <h1>Individual Counter</h1>
+      <h1>Safari Sleuths</h1>
+      <h2> Individual Animal Identifier</h2>
       <Grid container spacing={2}>
         <Grid item xs={3}>
           <Box width={300}>

@@ -1,9 +1,10 @@
-import React, { useEffect, useState } from "react";
+import React, { ChangeEvent, useEffect, useState } from "react";
 import {
   Box,
   Button,
   ButtonGroup,
   CircularProgress,
+  Grid,
   ImageList,
   ImageListItem,
   ImageListItemBar,
@@ -33,6 +34,7 @@ import {
   CopyAll,
   Edit,
   Check,
+  Cancel,
 } from "@mui/icons-material";
 
 const MinConfidence = 0.89;
@@ -123,11 +125,20 @@ export function Results(props: { sessionID: string }) {
 }
 
 function LowConfidence(props: { annotations: Array<Annotation> }) {
+  const reviewed = false;
+
   return (
     <Box>
       <Accordion defaultExpanded={true}>
         <AccordionSummary expandIcon={<ExpandMore />}>
-          <h3>Low Confidence ({props.annotations.length} images)</h3>
+          <h3>
+            Low Confidence ({props.annotations.length} images)
+            {reviewed ? (
+              <Typography color={"success"}>Reviewed</Typography>
+            ) : (
+              <Typography color={"success"}>Needs Review</Typography>
+            )}
+          </h3>
         </AccordionSummary>
         <AccordionDetails>
           <AnimalImageList annotations={props.annotations} />
@@ -158,32 +169,132 @@ function AnimalBreakdown(props: {
 }
 
 function AnimalImageList(props: { annotations: Array<Annotation> }) {
+  const [annotations, setAnnotations] = React.useState(props.annotations);
   return (
     <ImageList cols={4} gap={12}>
-      {props.annotations.map((annotation) => (
-        <ImageListItem key={annotation.image_src}>
-          <img
-            src={annotation.annotated_image_src}
-            srcSet={annotation.annotated_image_src}
-            alt={annotation.annotated_image_src}
-            loading="lazy"
-          />
-          <ImageListItemBar
-            position={"top"}
-            subtitle={`Confidence: ${annotation.confidence * 100}%`}
-          />
-          <AnnotationButtonsAndModal annotation={annotation} />
-        </ImageListItem>
+      {annotations.map((annotation, i) => (
+        <AnnotationImage
+          key={i}
+          annotation={annotation}
+          setAnnotation={(v: Annotation) => {
+            const newAnnotations = [...annotations];
+            newAnnotations[i] = v;
+            setAnnotations(newAnnotations);
+          }}
+        />
       ))}
     </ImageList>
   );
 }
 
-function AnnotationButtonsAndModal(props: { annotation: Annotation }) {
+function AnnotationImage(props: {
+  annotation: Annotation;
+  setAnnotation: (v: Annotation) => void;
+}) {
+  const src = props.annotation.annotated_image_src;
+  const alt = `${props.annotation.image_src.slice(
+    props.annotation.image_src.lastIndexOf("/")
+  )} with bounding box`;
+  const [openImageModal, setOpenImageModal] = React.useState(false);
+
+  let subtitle = `Confidence: ${props.annotation.confidence * 100}%`;
+
+  if (props.annotation.reviewed) {
+    subtitle = "✔ Reviewed";
+  }
+
+  if (props.annotation.ignore) {
+    subtitle = "❌ Ignored";
+  }
+
+  return (
+    <ImageListItem>
+      <img
+        src={src}
+        srcSet={src}
+        alt={alt}
+        loading="lazy"
+        onClick={() => setOpenImageModal(true)}
+      />
+      <ImageModal
+        src={src}
+        alt={alt}
+        open={openImageModal}
+        setOpen={setOpenImageModal}
+      />
+      <ImageListItemBar position={"top"} subtitle={subtitle} />
+      <AnnotationButtonsAndModal
+        annotation={props.annotation}
+        setAnnotation={props.setAnnotation}
+      />
+    </ImageListItem>
+  );
+}
+
+function ImageModal(props: {
+  src: string;
+  alt: string;
+  open: boolean;
+  setOpen: (v: boolean) => void;
+}) {
+  return (
+    <Modal open={props.open} onClose={() => props.setOpen(false)}>
+      <Box
+        display="flex"
+        justifyContent="center"
+        alignItems="center"
+        minHeight="100vh"
+      >
+        <img
+          width={"75%"}
+          height={"auto"}
+          src={props.src}
+          srcSet={props.src}
+          alt={props.alt}
+          loading="lazy"
+        />
+      </Box>
+    </Modal>
+  );
+}
+
+function AnnotationButtonsAndModal(props: {
+  annotation: Annotation;
+  setAnnotation: (v: Annotation) => void;
+}) {
   const annotationJSON = JSON.stringify(props.annotation, null, 2);
   const [showForm, setShowForm] = React.useState(false);
   const [formError, setFormError] = React.useState<null | string>(null);
   const inputRef = React.useRef<HTMLInputElement>(null);
+  let updatedAnnotation = props.annotation;
+
+  const onTextFieldChange = (
+    e: ChangeEvent<HTMLTextAreaElement | HTMLInputElement>
+  ) => {
+    try {
+      updatedAnnotation = JSON.parse(e.target.value);
+      setFormError(null);
+    } catch (err) {
+      setFormError(`${err}`);
+    }
+  };
+
+  const submitAnnotation = () => {
+    const annotationsJSON = JSON.stringify([updatedAnnotation]);
+    fetch("/api/v1/annotations", {
+      method: "POST",
+      headers: {
+        Accept: "application/json",
+        "Content-Type": "application/json",
+      },
+      body: annotationsJSON,
+    })
+      .then(() => {
+        setShowForm(false);
+        props.setAnnotation(updatedAnnotation);
+      })
+      .catch((reason) => setFormError(reason));
+  };
 
   const boxStyle = {
     position: "absolute",
@@ -199,9 +310,17 @@ function AnnotationButtonsAndModal(props: { annotation: Annotation }) {
   return (
     <>
       <ButtonGroup variant={"text"} fullWidth>
-        <CopyButton annotationJSON={annotationJSON} />
         <Button size={"small"} onClick={() => setShowForm(true)}>
           <Edit /> Corrections
+        </Button>
+        <Button
+          size={"small"}
+          onClick={() => {
+            updatedAnnotation.ignore = true;
+            submitAnnotation();
+          }}
+        >
+          <Cancel /> Ignore
         </Button>
       </ButtonGroup>
       <Modal open={showForm} onClose={() => setShowForm(false)}>
@@ -213,15 +332,7 @@ function AnnotationButtonsAndModal(props: { annotation: Annotation }) {
             multiline
             rows={25}
             defaultValue={annotationJSON}
-            onChange={(e) => {
-              try {
-                JSON.parse(e.target.value);
-              } catch (err) {
-                setFormError(`${err}`);
-                return;
-              }
-              setFormError(null);
-            }}
+            onChange={onTextFieldChange}
           />
           <Button
             fullWidth
@@ -229,7 +340,9 @@ function AnnotationButtonsAndModal(props: { annotation: Annotation }) {
             color={"primary"}
             disabled={formError !== null}
             onClick={() => {
-              setShowForm(false);
+              updatedAnnotation.reviewed = true;
+              updatedAnnotation.ignore = false;
+              submitAnnotation();
             }}
           >
             Submit
@@ -239,36 +352,33 @@ function AnnotationButtonsAndModal(props: { annotation: Annotation }) {
           </Box>
         </Box>
       </Modal>
+      <CopyButton annotationJSON={annotationJSON} />
     </>
   );
 }
 
 function CopyButton(props: { annotationJSON: string }) {
   const [copied, setCopied] = React.useState(false);
-  const buttonContent = copied ? (
-    <>
-      <Check /> Copied!
-    </>
-  ) : (
-    <>
-      <ContentCopy /> Annotation
-    </>
-  );
+  const onButtonClick = () =>
+    navigator.clipboard
+      .writeText(props.annotationJSON)
+      .then(() => {
+        setCopied(true);
+        return new Promise((resolve) => setTimeout(resolve, 1000));
+      })
+      .then(() => setCopied(false));
 
   return (
-    <Button
-      size={"small"}
-      onClick={() =>
-        navigator.clipboard
-          .writeText(props.annotationJSON)
-          .then(() => {
-            setCopied(true);
-            return new Promise((resolve) => setTimeout(resolve, 1000));
-          })
-          .then(() => setCopied(false))
-      }
-    >
-      {buttonContent}
+    <Button size={"small"} onClick={onButtonClick}>
+      {copied ? (
+        <>
+          <Check /> Copied!
+        </>
+      ) : (
+        <>
+          <ContentCopy /> Annotation
+        </>
+      )}
     </Button>
   );
 }
@@ -302,6 +412,8 @@ interface Annotation {
   annotated_image_src: string;
   name: string;
   confidence: number;
+  reviewed: boolean | undefined;
+  ignore: boolean | undefined;
 }
 
 export function fetchPredictions(
