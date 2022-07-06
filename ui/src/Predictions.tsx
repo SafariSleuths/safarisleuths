@@ -125,7 +125,9 @@ export function Predictions(props: { sessionID: string }) {
     updates.forEach((annotation) =>
       annotationsById.set(annotation.id, annotation)
     );
-    setAnnotations(Array.from(annotationsById.values()));
+    const newAnnotations = Array.from(annotationsById.values());
+    writeAnnotationsCache(newAnnotations);
+    setAnnotations(newAnnotations);
   };
 
   return (
