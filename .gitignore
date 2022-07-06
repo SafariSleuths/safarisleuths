@@ -1,5 +1,4 @@
 .idea
 __pycache__
 .DS_Store
-api/data
-api/website-data
+website-data
