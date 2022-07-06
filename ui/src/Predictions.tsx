@@ -132,18 +132,29 @@ export function Predictions(props: { sessionID: string }) {
     <Stack spacing={2}>
       <p>
         Compute predictions and review results. Once images have been reviewed,
-        they can be used to fine-tuning the model for future predictions.
+        they can be used to fine-tuning the model for future predictions. The
+        demo uses training images and random a confidence score for the
+        predictions. All the results have been precomputed, so the "Compute
+        Results" button will work very quickly; once we have all the models in
+        place, this will take significantly longer to complete. We haven't wired
+        in the retraining pipeline, so the retraining button is disabled.
       </p>
       <ButtonGroup>
-        <Button onClick={getPredictions}>Compute Results</Button>
-        <Button
-          href={jsonDownloadUrl || "#"}
-          disabled={jsonDownloadUrl === undefined}
-          download={"results.json"}
-        >
-          <Download /> Annotations (COCO)
-        </Button>
-        <Button disabled>Start Retraining</Button>
+        <Tooltip title={"Compute predictions for the uploaded images."}>
+          <Button onClick={getPredictions}>Compute Results</Button>
+        </Tooltip>
+        <Tooltip title={"Download all annotations in json format."}>
+          <Button
+            href={jsonDownloadUrl || "#"}
+            disabled={jsonDownloadUrl === undefined}
+            download={"results.json"}
+          >
+            <Download /> Annotations
+          </Button>
+        </Tooltip>
+        <Tooltip title={"Kick off a retraining job"}>
+          <Button disabled>Start Retraining</Button>
+        </Tooltip>
       </ButtonGroup>
 
       {showLoading ? (
