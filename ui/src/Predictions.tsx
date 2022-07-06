@@ -16,6 +16,7 @@ import {
   TableHead,
   TableRow,
   TextField,
+  Tooltip,
   Typography,
 } from "@mui/material";
 
@@ -40,11 +41,19 @@ interface PredictionResponse {
   annotations: Array<Annotation>;
 }
 
+interface Prediction {
+  name: string;
+  confidence: number;
+}
+
 interface Annotation {
   id: number;
+  image_id: number;
+  bbox: Array<number>;
   name: string;
   species: string;
   confidence: number;
+  predictions: Array<Prediction>;
   image_src: string;
   annotated_image_src: string;
   reviewed: boolean | undefined;
@@ -66,28 +75,37 @@ export function fetchPredictions(
     .catch((reason) => console.log(reason));
 }
 
-export function Predictions(props: { sessionID: string }) {
-  const [predictionResponse, setPredictionResponse] = useState<
-    PredictionResponse | undefined
-  >(undefined);
+const AnnotationsCacheKey = "prediction";
 
+function readAnnotationsCache(): Array<Annotation> | undefined {
+  const localAnnotations = localStorage.getItem(AnnotationsCacheKey);
+  if (localAnnotations !== null) {
+    return JSON.parse(localAnnotations);
+  }
+  return undefined;
+}
+
+function writeAnnotationsCache(annotations: Array<Annotation>) {
+  localStorage.setItem(AnnotationsCacheKey, JSON.stringify(annotations));
+}
+
+export function Predictions(props: { sessionID: string }) {
   const [annotations, setAnnotations] = useState<Array<Annotation> | undefined>(
-    undefined
+    readAnnotationsCache()
   );
 
   const [showLoading, setShowLoading] = useState(false);
 
   function getPredictions() {
-    setPredictionResponse(undefined);
     setShowLoading(true);
     fetchPredictions({ session_id: props.sessionID }).then((data) => {
-      setPredictionResponse(data);
+      writeAnnotationsCache(data.annotations);
       setAnnotations(data.annotations);
       setShowLoading(false);
     });
   }
 
-  const jsonDownloadUrl = useJsonDownloadUrl(predictionResponse?.annotations);
+  const jsonDownloadUrl = useJsonDownloadUrl(annotations);
 
   const lowConfidenceAnnotations = (
     annotations || ([] as Array<Annotation>)
@@ -95,12 +113,10 @@ export function Predictions(props: { sessionID: string }) {
 
   const annotationsByName: Map<string, Array<Annotation>> = (
     annotations || ([] as Array<Annotation>)
-  )
-    .filter((a) => a.confidence >= MinConfidence)
-    .reduce(
-      (a, b) => a.set(b.name, [...(a.get(b.name) || []), b]),
-      new Map<string, Array<Annotation>>()
-    );
+  ).reduce(
+    (a, b) => a.set(b.name, [...(a.get(b.name) || []), b]),
+    new Map<string, Array<Annotation>>()
+  );
 
   const updateAnnotations = (updates: Array<Annotation>) => {
     const annotationsById: Map<number, Annotation> = (
@@ -114,8 +130,11 @@ export function Predictions(props: { sessionID: string }) {
 
   return (
     <Stack spacing={2}>
-      <h2>Prediction Results</h2>
-      <ButtonGroup variant={"text"}>
+      <p>
+        Compute predictions and review results. Once images have been reviewed,
+        they can be used to fine-tuning the model for future predictions.
+      </p>
+      <ButtonGroup>
         <Button onClick={getPredictions}>Compute Results</Button>
         <Button
           href={jsonDownloadUrl || "#"}
@@ -124,6 +143,7 @@ export function Predictions(props: { sessionID: string }) {
         >
           <Download /> Annotations (COCO)
         </Button>
+        <Button disabled>Start Retraining</Button>
       </ButtonGroup>
 
       {showLoading ? (
@@ -134,16 +154,10 @@ export function Predictions(props: { sessionID: string }) {
         <Stack spacing={4}>
           <Paper>
             <Box margin={2}>
-              <SummaryTable
-                annotationsByName={annotationsByName}
-                lowConfidenceAnnotations={lowConfidenceAnnotations}
-              />
+              <h3>Summary</h3>
+              <SummaryTable annotationsByName={annotationsByName} />
             </Box>
           </Paper>
-          <LowConfidenceBreakdown
-            annotations={lowConfidenceAnnotations}
-            setAnnotations={updateAnnotations}
-          />
           {Array.from(annotationsByName).map(([name, annotations]) => (
             <AnimalBreakdown
               key={name}
@@ -160,13 +174,7 @@ export function Predictions(props: { sessionID: string }) {
 
 function SummaryTable(props: {
   annotationsByName: Map<string, Array<Annotation>>;
-  lowConfidenceAnnotations: Array<Annotation>;
 }) {
-  const lowConfidenceBySpecies = props.lowConfidenceAnnotations.reduce(
-    (a, b) => a.set(b.species, [...(a.get(b.species) || []), b]),
-    new Map<string, Array<Annotation>>()
-  );
-
   return (
     <Table size={"small"}>
       <TableHead>
@@ -186,20 +194,13 @@ function SummaryTable(props: {
             <TableCell>{annotations.length}</TableCell>
           </TableRow>
         ))}
-        {Array.from(lowConfidenceBySpecies).map(([species, annotations], i) => (
-          <TableRow key={i}>
-            <TableCell>Ø</TableCell>
-            <TableCell>Low Confidence</TableCell>
-            <TableCell>{species}</TableCell>
-            <TableCell>{annotations.length}</TableCell>
-          </TableRow>
-        ))}
       </TableBody>
     </Table>
   );
 }
 
-function LowConfidenceBreakdown(props: {
+function AnimalBreakdown(props: {
+  name: string;
   annotations: Array<Annotation>;
   setAnnotations: (v: Array<Annotation>) => void;
 }) {
@@ -209,32 +210,8 @@ function LowConfidenceBreakdown(props: {
       <Accordion defaultExpanded={true}>
         <AccordionSummary expandIcon={<ExpandMore />}>
           <h3>
-            Low Confidence ({pendingReview}/{props.annotations.length} images
+            Animal ID: {props.name} ({pendingReview}/{props.annotations.length}{" "}
             reviewed)
-          </h3>
-        </AccordionSummary>
-        <AccordionDetails>
-          <AnimalImageList
-            annotations={props.annotations}
-            setAnnotations={props.setAnnotations}
-          />
-        </AccordionDetails>
-      </Accordion>
-    </Box>
-  );
-}
-
-function AnimalBreakdown(props: {
-  name: string;
-  annotations: Array<Annotation>;
-  setAnnotations: (v: Array<Annotation>) => void;
-}) {
-  return (
-    <Box>
-      <Accordion defaultExpanded={true}>
-        <AccordionSummary expandIcon={<ExpandMore />}>
-          <h3>
-            Animal ID: {props.name} ({props.annotations.length} images)
           </h3>
         </AccordionSummary>
         <AccordionDetails>
@@ -252,8 +229,29 @@ function AnimalImageList(props: {
   annotations: Array<Annotation>;
   setAnnotations: (v: Array<Annotation>) => void;
 }) {
+  props.annotations.sort((a, b) => {
+    let a_score = a.confidence;
+    let b_score = b.confidence;
+    if (a.reviewed) {
+      a_score = 100;
+    }
+    if (b.reviewed) {
+      b_score = 100;
+    }
+    if (a.ignored) {
+      a_score = 200;
+    }
+    if (b.ignored) {
+      b_score = 200;
+    }
+    if (a_score == b_score) {
+      return a.name.localeCompare(b.name);
+    }
+    return a_score - b_score;
+  });
+
   return (
-    <ImageList cols={4} gap={12}>
+    <ImageList cols={3} gap={12}>
       {props.annotations.map((annotation, i) => (
         <AnnotationImage
           key={i}
@@ -277,7 +275,9 @@ function AnnotationImage(props: {
   )} with bounding box`;
   const [openImageModal, setOpenImageModal] = React.useState(false);
 
-  let subtitle = `Confidence: ${props.annotation.confidence * 100}%`;
+  let subtitle = `Confidence: ${(props.annotation.confidence * 100).toFixed(
+    2
+  )}%`;
 
   if (props.annotation.reviewed) {
     subtitle = "✔ Reviewed";
@@ -389,19 +389,46 @@ function AnnotationButtonsAndModal(props: {
 
   return (
     <>
-      <ButtonGroup variant={"text"} fullWidth>
-        <Button size={"small"} onClick={() => setShowForm(true)}>
-          <Edit /> Corrections
-        </Button>
-        <Button
-          size={"small"}
-          onClick={() => {
-            updatedAnnotation.ignored = true;
-            submitAnnotation();
-          }}
+      <ButtonGroup fullWidth variant={"text"}>
+        <Tooltip
+          title="Accept the predicted annotation as is and use it for retraining."
+          arrow
         >
-          <Cancel /> Ignore
-        </Button>
+          <Button
+            size={"small"}
+            onClick={() => {
+              updatedAnnotation.reviewed = true;
+              updatedAnnotation.ignored = false;
+              submitAnnotation();
+            }}
+          >
+            <Check /> Accept
+          </Button>
+        </Tooltip>
+        <Tooltip
+          title="Ignore this prediction and do not use the annotation for retraining."
+          arrow
+        >
+          <Button
+            size={"small"}
+            onClick={() => {
+              updatedAnnotation.ignored = true;
+              submitAnnotation();
+            }}
+          >
+            <Cancel /> Ignore
+          </Button>
+        </Tooltip>
+        <Tooltip
+          title="Make corrections to annotation. After corrections are made, this image and annotation will be used for retraining."
+          arrow
+        >
+          <Button size={"small"} onClick={() => setShowForm(true)}>
+            <Edit /> Corrections
+          </Button>
+        </Tooltip>
+
+        <CopyButton annotationJSON={annotationJSON} />
       </ButtonGroup>
       <Modal open={showForm} onClose={() => setShowForm(false)}>
         <Box sx={boxStyle} overflow={"scroll"} width={750}>
@@ -432,7 +459,6 @@ function AnnotationButtonsAndModal(props: {
           </Box>
         </Box>
       </Modal>
-      <CopyButton annotationJSON={annotationJSON} />
     </>
   );
 }
@@ -449,17 +475,19 @@ function CopyButton(props: { annotationJSON: string }) {
       .then(() => setCopied(false));
 
   return (
-    <Button size={"small"} onClick={onButtonClick}>
-      {copied ? (
-        <>
-          <Check /> Copied!
-        </>
-      ) : (
-        <>
-          <ContentCopy /> Annotation
-        </>
-      )}
-    </Button>
+    <Tooltip title="Copy the annotation to the clipboard." arrow>
+      <Button size={"small"} onClick={onButtonClick}>
+        {copied ? (
+          <>
+            <Check /> Copied!
+          </>
+        ) : (
+          <>
+            <ContentCopy /> Annotation
+          </>
+        )}
+      </Button>
+    </Tooltip>
   );
 }
 

@@ -4,10 +4,16 @@ import {
   Button,
   CircularProgress,
   FormControl,
+  Grid,
+  ImageList,
+  ImageListItem,
+  InputLabel,
+  MenuItem,
+  Select,
   Stack,
 } from "@mui/material";
 
-export function UploadMenu(props: { sessionID: string }) {
+export function SourceFiles(props: { sessionID: string }) {
   const [uploadedFiles, setUploadedFiles] = useState<Array<string> | undefined>(
     undefined
   );
@@ -20,18 +26,60 @@ export function UploadMenu(props: { sessionID: string }) {
     }
   });
 
-  const inputRef = useRef<HTMLInputElement>(null);
-  const [selectedFiles, setSelectedFiles] = useState<FileList | null>(null);
-  const [showLoading, setShowLoading] = useState(false);
   return (
-    <Stack
-      spacing={2}
-      sx={{
-        position: "fixed",
-        width: "350",
-      }}
-    >
-      <h2>Source Files</h2>
+    <Stack spacing={2}>
+      <p>Upload new photos to use for predictions.</p>
+      <SessionSelect />
+      <UploadForm
+        uploadedFiles={uploadedFiles}
+        setUploadedFiles={setUploadedFiles}
+      />
+
+      <Stack alignItems={"center"}>
+        <ImageList cols={5} gap={12}>
+          {(uploadedFiles || []).map((src, i) => (
+            <ImageListItem key={i}>
+              <img src={src} srcSet={src} alt={src} loading="lazy" />
+              <Button
+                disabled
+                fullWidth
+                onClick={() =>
+                  deleteFiles([src]).then(() => {
+                    setUploadedFiles(uploadedFiles?.filter((n) => n != src));
+                  })
+                }
+              >
+                Delete
+              </Button>
+            </ImageListItem>
+          ))}
+        </ImageList>
+      </Stack>
+    </Stack>
+  );
+}
+
+function SessionSelect() {
+  return (
+    <Box marginTop={2}>
+      <InputLabel id="session">Session</InputLabel>
+      <Select size={"small"} value="Demo" label="Session" id="session">
+        <MenuItem value="Demo">Demo</MenuItem>
+      </Select>
+    </Box>
+  );
+}
+
+function UploadForm(props: {
+  uploadedFiles: Array<string> | undefined;
+  setUploadedFiles: (value: Array<string> | undefined) => void;
+}) {
+  const [selectedFiles, setSelectedFiles] = useState<FileList | null>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const [showLoading, setShowLoading] = useState(false);
+
+  return (
+    <Box marginTop={2}>
       <FormControl>
         <input
           ref={inputRef}
@@ -47,7 +95,10 @@ export function UploadMenu(props: { sessionID: string }) {
             uploadFiles(selectedFiles).then((uploaded) => {
               setShowLoading(false);
               setSelectedFiles(null);
-              setUploadedFiles([...uploaded, ...(uploadedFiles ?? [])]);
+              props.setUploadedFiles([
+                ...uploaded,
+                ...(props.uploadedFiles ?? []),
+              ]);
             });
             if (inputRef.current != null) {
               inputRef.current.value = "";
@@ -60,34 +111,7 @@ export function UploadMenu(props: { sessionID: string }) {
       <Box hidden={!showLoading}>
         <CircularProgress />{" "}
       </Box>
-
-      <Stack
-        alignItems={"center"}
-        sx={{
-          maxHeight: "65vh",
-          overflow: "scroll",
-          width: 300,
-        }}
-      >
-        {uploadedFiles?.map((src, i) => (
-          <Stack key={i}>
-            <p>{src.slice(src.lastIndexOf("/") + 1)}</p>
-            <img src={src} alt={src} width={250} />
-            <Button
-              disabled
-              style={{ width: 250 }}
-              onClick={() =>
-                deleteFiles([src]).then(() => {
-                  setUploadedFiles(uploadedFiles?.filter((n) => n != src));
-                })
-              }
-            >
-              Delete
-            </Button>
-          </Stack>
-        ))}
-      </Stack>
-    </Stack>
+    </Box>
   );
 }
 

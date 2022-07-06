@@ -1,22 +1,62 @@
 import React from "react";
 import "./App.css";
-import { Box, Grid } from "@mui/material";
+import { Box, Stack, Tab, Tabs } from "@mui/material";
 import { Predictions } from "./Predictions";
-import { UploadMenu } from "./UploadMenu";
+import { SourceFiles } from "./SourceFiles";
+import { KnownIndividuals } from "./KnownIndividuals";
+import { Documentation } from "./Documentation";
 
 export default function App() {
   return (
     <Box paddingX={6} paddingBottom={4}>
-      <h1>Safari Sleuths</h1>
-      <h2>Individual Animal Identifier</h2>
-      <Grid container spacing={2}>
-        <Grid item width={350}>
-          <UploadMenu sessionID={"0"} />
-        </Grid>
-        <Grid item xs={9}>
-          <Predictions sessionID={"0"} />
-        </Grid>
-      </Grid>
+      <Stack spacing={2}>
+        <h1>
+          Safari Sleuths | <small>Individual Animal Identifier</small>
+        </h1>
+        <MainMenu />
+      </Stack>
+    </Box>
+  );
+}
+
+function MainMenu() {
+  const [value, setValue] = React.useState(0);
+
+  const handleChange = (event: React.SyntheticEvent, newValue: number) => {
+    setValue(newValue);
+  };
+
+  let content = <Box />;
+  switch (value) {
+    case 0:
+      content = <SourceFiles sessionID={"0"} />;
+      break;
+    case 1:
+      content = <Predictions sessionID={"0"} />;
+      break;
+    case 2:
+      content = <KnownIndividuals />;
+      break;
+    case 3:
+      content = <Documentation />;
+      break;
+  }
+
+  return (
+    <Box sx={{ width: "100%" }}>
+      <Box sx={{ borderBottom: 1, borderColor: "divider" }}>
+        <Tabs
+          value={value}
+          onChange={handleChange}
+          aria-label="basic tabs example"
+        >
+          <Tab label="Source Photos" />
+          <Tab label="Prediction Results" />
+          <Tab label="Known Individuals" />
+          <Tab label="Documentation" />
+        </Tabs>
+      </Box>
+      {content}
     </Box>
   );
 }
