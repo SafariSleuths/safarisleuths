@@ -33,8 +33,6 @@ import {
   Cancel,
 } from "@mui/icons-material";
 
-const MinConfidence = 0.89;
-
 interface PredictionRequest {}
 
 interface PredictionResponse {
@@ -99,6 +97,18 @@ export function Predictions(props: { sessionID: string }) {
   function getPredictions() {
     setShowLoading(true);
     fetchPredictions({ session_id: props.sessionID }).then((data) => {
+      data.annotations.sort((a, b) => {
+        switch (true) {
+          case a.name == b.name:
+            return 0;
+          case a.name !== Undetected && b.name !== Undetected:
+            return a.name.localeCompare(b.name);
+          case a.name == Undetected:
+            return 1;
+          default:
+            return -1;
+        }
+      });
       writeAnnotationsCache(data.annotations);
       setAnnotations(data.annotations);
       setShowLoading(false);
@@ -106,11 +116,6 @@ export function Predictions(props: { sessionID: string }) {
   }
 
   const jsonDownloadUrl = useJsonDownloadUrl(annotations);
-
-  const lowConfidenceAnnotations = (
-    annotations || ([] as Array<Annotation>)
-  ).filter((a) => a.confidence < MinConfidence);
-
   const annotationsByName: Map<string, Array<Annotation>> = (
     annotations || ([] as Array<Annotation>)
   ).reduce(
@@ -171,14 +176,25 @@ export function Predictions(props: { sessionID: string }) {
               <SummaryTable annotationsByName={annotationsByName} />
             </Box>
           </Paper>
-          {Array.from(annotationsByName).map(([name, annotations]) => (
-            <AnimalBreakdown
-              key={name}
-              name={name}
-              annotations={annotations}
-              setAnnotations={updateAnnotations}
-            />
-          ))}
+          <AnimalBreakdown
+            name={Undetected}
+            subtitle={
+              "We could not detect or label the animal in these images."
+            }
+            annotations={annotationsByName.get(Undetected) || []}
+            setAnnotations={updateAnnotations}
+          />
+          {Array.from(annotationsByName)
+            .filter(([name, _]) => name !== Undetected)
+            .map(([name, annotations]) => (
+              <AnimalBreakdown
+                key={name}
+                name={name}
+                subtitle={""}
+                annotations={annotations}
+                setAnnotations={updateAnnotations}
+              />
+            ))}
         </Stack>
       )}
     </Stack>
@@ -199,35 +215,47 @@ function SummaryTable(props: {
         </TableRow>
       </TableHead>
       <TableBody>
-        {Array.from(props.annotationsByName).map(([name, annotations], i) => (
-          <TableRow key={i}>
-            <TableCell>{i + 1}</TableCell>
-            <TableCell>{name}</TableCell>
-            <TableCell>{annotations[0].species}</TableCell>
-            <TableCell>{annotations.length}</TableCell>
-          </TableRow>
-        ))}
+        {Array.from(props.annotationsByName)
+          .filter(([name, _]) => name != Undetected)
+          .map(([name, annotations], i) => (
+            <TableRow key={i}>
+              <TableCell>{i + 1}</TableCell>
+              <TableCell>{name}</TableCell>
+              <TableCell>{annotations[0].species}</TableCell>
+              <TableCell>{annotations.length}</TableCell>
+            </TableRow>
+          ))}
       </TableBody>
     </Table>
   );
 }
 
+const Undetected = "undetected";
+
 function AnimalBreakdown(props: {
   name: string;
   annotations: Array<Annotation>;
   setAnnotations: (v: Array<Annotation>) => void;
+  subtitle: string;
 }) {
+  if (props.annotations.length == 0) {
+    return <Box />;
+  }
+
   const pendingReview = props.annotations.filter((a) => a.reviewed).length;
+  let title = `Animal ID: ${props.name} (${pendingReview}/${props.annotations.length} reviewed)`;
+  if (props.name == Undetected) {
+    title = `None detected (${pendingReview}/${props.annotations.length} reviewed)`;
+  }
+
   return (
     <Box>
       <Accordion defaultExpanded={true}>
         <AccordionSummary expandIcon={<ExpandMore />}>
-          <h3>
-            Animal ID: {props.name} ({pendingReview}/{props.annotations.length}{" "}
-            reviewed)
-          </h3>
+          <h3>{title}</h3>
         </AccordionSummary>
         <AccordionDetails>
+          <Box>{props.subtitle}</Box>
           <AnimalImageList
             annotations={props.annotations}
             setAnnotations={props.setAnnotations}
