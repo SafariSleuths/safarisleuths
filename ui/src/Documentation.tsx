@@ -143,6 +143,15 @@ export function Documentation() {
             </TableCell>
             <TableCell>Should this image be ignored?</TableCell>
           </TableRow>
+          <TableRow>
+            <TableCell>
+              <Typography fontFamily={"monospace"}>location</Typography>
+            </TableCell>
+            <TableCell>
+              <Typography fontFamily={"monospace"}>Dictionary</Typography>
+            </TableCell>
+            <TableCell>Geolocation data, if available.</TableCell>
+          </TableRow>
         </TableBody>
       </Table>
       <h4>IndividualPrediction</h4>

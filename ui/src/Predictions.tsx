@@ -4,9 +4,12 @@ import {
   Button,
   ButtonGroup,
   CircularProgress,
+  Grid,
   ImageList,
   ImageListItem,
   ImageListItemBar,
+  List,
+  ListItem,
   Modal,
   Paper,
   Stack,
@@ -316,9 +319,8 @@ function AnnotationImage(props: {
   )} with bounding box`;
   const [openImageModal, setOpenImageModal] = React.useState(false);
 
-  let subtitle = `Confidence: ${(props.annotation.confidence * 100).toFixed(
-    2
-  )}%`;
+  const confidence = (props.annotation.confidence * 100).toFixed(2);
+  let subtitle = `Confidence: ${confidence}%`;
 
   if (props.annotation.reviewed) {
     subtitle = "✔ Reviewed";
@@ -343,7 +345,23 @@ function AnnotationImage(props: {
         open={openImageModal}
         setOpen={setOpenImageModal}
       />
-      <ImageListItemBar position={"top"} subtitle={subtitle} />
+      <ImageListItemBar
+        position={"top"}
+        subtitle={
+          <Grid container flexDirection={"row"}>
+            <Grid item xs={6}>
+              <Tooltip title={"Individual Classifier Confidence"}>
+                <span>{subtitle}</span>
+              </Tooltip>
+            </Grid>
+            <Grid item style={{ textAlign: "right" }} xs={6}>
+              <Tooltip title={"Lat: 0.000, Long: 0.000"}>
+                <span>Location: Safari</span>
+              </Tooltip>
+            </Grid>
+          </Grid>
+        }
+      />
       <AnnotationButtonsAndModal
         annotation={props.annotation}
         setAnnotation={props.setAnnotation}
