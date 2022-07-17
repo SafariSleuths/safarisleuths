@@ -73,5 +73,5 @@ if __name__ == '__main__':
     parser.add_argument("--port", default=5000, type=int, help='port number')
     args = parser.parse_args()
     # Use force reload to cache
-    model = torch.hub.load('ultralytics/yolov5', 'custom', 'best.onnx', autoshape=True, force_reload=True)
+    model = torch.hub.load('ultralytics/yolov5', 'custom', 'frozen_backbone_coco_unlabeled_best.onnx', autoshape=True, force_reload=True)
     app.run(host='0.0.0.0', port=args.port)
