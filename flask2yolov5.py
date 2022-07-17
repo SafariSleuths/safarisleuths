@@ -23,7 +23,7 @@ app.config['S3_LOCATION'] = 'http://{}.s3.amazonaws.com/'.format(app.config['S3_
 
 # Define the boto3 client
 client = boto3.client('s3',aws_access_key_id=app.config['S3_KEY'], 
-aws_secret_access_key="",
+aws_secret_access_key=app.config['S3_SECRET'],
 region_name= 'us-east-1')
 
 def upload_annotations(fname, df):
