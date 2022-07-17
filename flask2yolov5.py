@@ -38,6 +38,8 @@ def crop_img_upload(fname, im, df):
     """Crops an image to its bounding box and saves the cropped image to S3"""
     for idx, row in df.iterrows():
       bbox = [row['xmin'], row['ymin'], row['xmax'], row['ymax']]
+      # Get the predicted class to save to that folder
+      pred_class = row['name']
       cropped = im.crop(bbox)
       image_buffer = BytesIO()
       cropped.save(image_buffer, format=im.format)
@@ -45,7 +47,7 @@ def crop_img_upload(fname, im, df):
       md = hashlib.md5(value).digest()
       img_md5 = base64.b64encode(md).decode('utf-8')
       client.put_object(ContentMD5=img_md5, Body=image_buffer, Bucket=app.config['S3_BUCKET'], 
-      Key='website-data/cropped_images/{}'.format(str(idx) + '_' + fname))
+      Key='website-data/cropped_images/{}/{}'.format(pred_class, str(idx) + '_' + fname))
 
 @app.route('/predict', methods=['PUT'])
 def predict():
