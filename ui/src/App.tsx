@@ -26,10 +26,13 @@ function MainMenu() {
     setValue(newValue);
   };
 
+  const [sessionID, setSessionID] = React.useState("demo");
   let content = <Box />;
   switch (value) {
     case 0:
-      content = <SourceFiles sessionID={"0"} />;
+      content = (
+        <SourceFiles sessionID={sessionID} setSessionID={setSessionID} />
+      );
       break;
     case 1:
       content = <Predictions sessionID={"0"} />;
