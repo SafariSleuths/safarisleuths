@@ -26,6 +26,21 @@ client = boto3.client('s3',aws_access_key_id=app.config['S3_KEY'],
 aws_secret_access_key=app.config['S3_SECRET'],
 region_name= 'us-east-1')
 
+def yolov2coco(row, og_w, og_h, ):
+    """Converts the Yolov predictions to Coco format, scaled to the input image size"""
+
+    # Scale the Yolov predictions to normalize
+    x1 = (row['xmin']/640)*og_w
+    y1 = (row['ymin']/640)*og_h
+    x2 = (row['xmax']/)*og_w
+    y2 = (row)['ymax']/)*og_h
+    # Multiply by the original input image with and height
+    row['x_coco'] = x1
+    row['y_coco'] = y1
+    row['w_coco'] = x2 - x1
+    row['h_coco'] = y2 - y1
+    return row
+
 def upload_annotations(fname, df):
     """A helper function to write annotations to S3 storage"""
     csv_buffer = StringIO()
@@ -33,6 +48,7 @@ def upload_annotations(fname, df):
     s3_object_name = fname + '.csv'
     client.put_object(Body=csv_buffer.getvalue(), Bucket=app.config['S3_BUCKET'],
     Key='website-data/image_predictions/{}'.format(s3_object_name))
+
 
 def crop_img_upload(fname, im, df):
     """Crops an image to its bounding box and saves the cropped image to S3"""
@@ -53,21 +69,52 @@ def crop_img_upload(fname, im, df):
 def predict():
     # Get the uploaded files
     files = request.files.getlist('files[]')
-    
+
+    # Create several lists that will become the columns of the annotations file
+    data_dict = {'filename': [], 'index': [], 'x': [], 'y': [], 'h': [],
+                 'confidence': [], 'class': [], 'name': []}
+        
     for file in files:
         # Get the filename
         fname = file.filename
         # Convert the image into bytes and load into PIL Image
         img_bytes = f.read()
         im = Image.open(io.BytesIO(im_bytes))
+        # Get the dimensions of the input image
+        width, height = im.size
+        #Resize the image to the input dimensions for the pre-trained Yolov5 small
+        im = im.resize((640,640))
         # Send the results to the model for prediction
         results = model(img, size=640)
         # Create a csv file from the predictions and save to S3 storage
         data = results.pandas().xyxy[0]
-        # Send the annotations to S3 storage
-        s3methods.upload_annotations(fname, data)
-        # Save the cropped images to S3 storage
-        s3methods.crop_img_upload(fname, im, data)
+        # Store the image filename regardless of predictions being produced
+        data_dict['filename'].append(fname)
+        # If a prediction is make, convert the results to Coco format
+        if len(data) >= 1:
+            # Convert the annotations to Coco format
+            data = data.apply(yolov2coco, width, height, axis=1)
+            data.reset_index()
+            # Add the Coco bb values, confidence, name, and class to the dict
+            data_dict['index'].extend(data['index'].tolist())
+            data_dict['x'].extend(data['x_coco'].tolist())
+            data_dict['y'].extend(data['y_coco'].tolist())
+            data_dict['w'].extend(data['w_coco'].tolist())
+            data_dict['h'].extend(data['h_coco'].tolist())
+            data_dict['confidence'].extend(data['confidence'].tolist())
+            data_dict['class'].extend(data['class'].tolist())
+            data_dict['name'].extend(data['name'].tolist())
+            # Save the cropped images to S3 storage
+            crop_img_upload(fname, im, data)
+        else:
+            data_dict['index'].append(None)
+            data_dict['x'].append(None)
+            data_dict['y'].append(None)
+            data_dict['w'].append(None)
+            data_dict['h'].append(None)
+            data_dict['confidence'].append(None)
+            data_dict['class'].append(None)
+            data_dict['name'].append(None)
 
 
 if __name__ == '__main__':
