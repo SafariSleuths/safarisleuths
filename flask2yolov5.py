@@ -10,7 +10,9 @@ import pandas as pd
 from PIL import Image
 from io import StringIO, BytesIO
 import boto3
-
+# Import the py file to generate predictions
+import indiv_rec
+from joblib import load
 
 app = Flask(__name__)
 UPLOAD_FOLDER = 'uploads'
@@ -54,9 +56,14 @@ def crop_img_upload(fname, im, df):
     """Crops an image to its bounding box and saves the cropped image to S3"""
     for idx, row in df.iterrows():
       bbox = [row['xmin'], row['ymin'], row['xmax'], row['ymax']]
-      # Get the predicted class to save to that folder
+      # Get the predicted class to save to that folder in S3 and locally
       pred_class = row['name']
+      # Crop the image to the bounding box
       cropped = im.crop(bbox)
+      # Save the image locally to its predicted class folder using the original filename and the index to indicate the bounding box being saved
+      name2save = row['index'] + '_' + fname
+      cropped.save(f'/{pred_class}/{name2save}')
+      # Convert the image to bytes and save to S3
       image_buffer = BytesIO()
       cropped.save(image_buffer, format=im.format)
       value = image_buffer.getvalue()
@@ -80,7 +87,7 @@ def predict():
         # Convert the image into bytes and load into PIL Image
         img_bytes = f.read()
         im = Image.open(io.BytesIO(im_bytes))
-        # Get the dimensions of the input image
+        # Get the dimensions of the original image
         width, height = im.size
         #Resize the image to the input dimensions for the pre-trained Yolov5 small
         im = im.resize((640,640))
@@ -90,11 +97,12 @@ def predict():
         data = results.pandas().xyxy[0]
         # Store the image filename regardless of predictions being produced
         data_dict['filename'].append(fname)
+        # Reset the index
+        data.reset_index()
         # If a prediction is make, convert the results to Coco format
         if len(data) >= 1:
             # Convert the annotations to Coco format
             data = data.apply(yolov2coco, width, height, axis=1)
-            data.reset_index()
             # Add the Coco bb values, confidence, name, and class to the dict
             data_dict['index'].extend(data['index'].tolist())
             data_dict['x'].extend(data['x_coco'].tolist())
@@ -104,7 +112,7 @@ def predict():
             data_dict['confidence'].extend(data['confidence'].tolist())
             data_dict['class'].extend(data['class'].tolist())
             data_dict['name'].extend(data['name'].tolist())
-            # Save the cropped images to S3 storage
+            # Save the cropped images to S3 storage and to a local folder
             crop_img_upload(fname, im, data)
         else:
             data_dict['index'].append(None)
@@ -115,6 +123,49 @@ def predict():
             data_dict['confidence'].append(None)
             data_dict['class'].append(None)
             data_dict['name'].append(None)
+    
+    # Create a pandas dataframe from the Yolov predictions
+    pred_df = pd.DataFrame(data_dict)
+    # Add a new column to represent the unique identifier for every cropped image
+    pred_df['image'] = pred_df.apply(lambda row: str(row.index) + '_' + row.filename)
+    # Load the pre-trained embeddings from the previously trained model backbone
+    resnet18_new = torchvision.models.resnet18()
+    backbone_new = nn.Sequential(*list(resnet18_new.children())[:-1])
+    ckpt = torch.load('resnet18embed.pth')
+    backbone_new.load_state_dict(ckpt['resnet18_parameters'])
+    # Specify if the embeddings should be evaluated on cpu or gpu
+    device = torch.device('cuda' if torch.cuda_is_available() else 'cpu')
+
+    # Instantiate the species dataframes as None; None will be replaced if their folders are non-empty
+    hyena_preds, leopard_preds, giraffe_preds = None, None, None
+
+    if len(os.listdir('/Crocuta_crocuta')) != 0:
+        # Load the animal specific classifiers
+        hyena_clf = load('hyena_knn.joblib')
+        hyena_preds = indiv_rec.predict_individuals('/Crocuta_crocuta', backbone_new, device, hyena_clf)
+        # Retrieve the saved file of integer labels to string ids and add the string ids to the dataframe
+        hyena_id = load('hyena_id_map.joblib')
+        hyena_preds['individual_id'] = hyena_preds.apply(lambda row: row: hyena_id.get(row['predicted_labels']), axis=1)
+    
+    if len(os.listdir('/Panthera_pardus')) != 0:
+        leopard_clf = load('leopard_knn.joblib')
+        leopard_preds = indiv_rec.predict_individuals('/Panthera_pardus', backbone_new, device, leopard_clf)
+        leopard_id = load('leopard_id_map.joblib')
+        leopard_preds['individual_id'] = leopard_preds.apply(lambda row: row: leopard_id.get(row['predicted_labels']), axis=1)
+    
+    if len(os.listdir('/Giraffa_tippelskirchi')) != 0:
+        giraffe_clf = load('giraffe_knn.joblib')
+        giraffe_preds = indiv_rec.predict_individuals('/Giraffa_tippelskirchi', backbone_new, device, giraffe_clf)
+        giraffe_id = load('giraffe_id_map.joblib')
+        giraffe_preds['individual_id'] = giraffe_preds.apply(lambda row: row: giraffe_id.get(row['predicted_labels']), axis=1)
+
+    # Concatenate the individual predictions to a single dataframe
+    indiv_preds = pd.concat([hyena_preds, leopard_preds, giraffe_preds, axis=0, ignore_index=True)
+
+    # Perform a left join of the Yolov predictions to the individual predictions to keep images where a Yolov prediction failed to be made
+    pred_df = pred_df.merge(indiv_preds, on='image', how='left'))
+
+    return pred_df
 
 
 if __name__ == '__main__':
