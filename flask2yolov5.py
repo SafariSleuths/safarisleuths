@@ -28,8 +28,9 @@ client = boto3.client('s3',aws_access_key_id=app.config['S3_KEY'],
 aws_secret_access_key=app.config['S3_SECRET'],
 region_name= 'us-east-1')
 
-def yolov2coco(row, og_w, og_h, ):
+def yolov2coco(row, og_w, og_h):
     """Converts the Yolov predictions to Coco format, scaled to the input image size"""
+
     # Scale the Yolov predictions to normalize
     x1 = (row['xmin']/640)*og_w
     y1 = (row['ymin']/640)*og_h
@@ -71,13 +72,37 @@ def crop_img_upload(fname, im, df):
       client.put_object(ContentMD5=img_md5, Body=image_buffer, Bucket=app.config['S3_BUCKET'], 
       Key='website-data/cropped_images/{}/{}'.format(pred_class, str(idx) + '_' + fname))
 
+def cropped_imgs_s3_individuals(df):
+    """Accepts a dataframe of individual predictions and moves the corresponding cropped images to their S3 training folders"""
+    session = boto3.Session(aws_access_key_id=app.config['S3_KEY'], aws_secret_access_key=app.config['S3_SECRET'])
+    s3 = session.resource('s3')
+    for idx, row in df.iterrows():
+        # Get the species, predicted individual id of the animal, and image name
+        species = row['name']
+        animal_id = row['predicted_labels']
+        img_name = row['image']
+        copy_source = {
+            'Bucket': app.config['S3_BUCKET'],
+            key = '/website-data/cropped_images/{}/{}'.format(name, img_name)
+        }
+        if species == 'Crocuta_crocuta':
+            # Copy the image to the individual image folder to enable classifier retraining
+            s3.meta.client.copy(copy_source, app.config['S3_BUCKET'], '/hyena.coco/processed/train/{}'.format(animal_id)
+        elif species == 'Panthera_pardus':
+            s3.meta.client.copy(copy_source, app.config['S3_BUCKET'], '/leopard.coco/processed/train/{}'.format(animal_id)
+        elif species == 'Giraffa_tippelskirchi':
+            s3.meta.client.copy(copy_source, app.config['S3_BUCKET'], '/great_zebra_giraffe/individual_recognition/train/{}'.format(animal_id)
+        # Copy the image to the all individuals folder to enable retraining of the embeddings
+        s3.meta.client.copy(copy_source, app.config['S3_BUCKET'], '/all_animal_recognition/train/{}'.format(animal_id))
+
+
 @app.route('/predict', methods=['PUT'])
 def predict():
     # Get the uploaded files
     files = request.files.getlist('files[]')
 
     # Create several lists that will become the columns of the annotations file
-    data_dict = {'filename': [], 'index': [], 'x': [], 'y': [], 'h': [],
+    data_dict = {'filename': [], 'index': [], 'x': [], 'y': [], 'w': [], 'h': [],
                  'confidence': [], 'class': [], 'name': []}
         
     for file in files:
@@ -132,6 +157,8 @@ def predict():
     backbone_new = nn.Sequential(*list(resnet18_new.children())[:-1])
     ckpt = torch.load('resnet18embed.pth')
     backbone_new.load_state_dict(ckpt['resnet18_parameters'])
+    # Specify if the embeddings should be evaluated on cpu or gpu
+    device = torch.device('cuda' if torch.cuda_is_available() else 'cpu')
 
     # Instantiate the species dataframes as None; None will be replaced if their folders are non-empty
     hyena_preds, leopard_preds, giraffe_preds = None, None, None
@@ -139,20 +166,20 @@ def predict():
     if len(os.listdir('/Crocuta_crocuta')) != 0:
         # Load the animal specific classifiers
         hyena_clf = load('hyena_knn.joblib')
-        hyena_preds = indiv_rec.predict_individuals('/Crocuta_crocuta', backbone_new, hyena_clf)
+        hyena_preds = indiv_rec.predict_individuals('/Crocuta_crocuta', backbone_new, device, hyena_clf)
         # Retrieve the saved file of integer labels to string ids and add the string ids to the dataframe
         hyena_id = load('hyena_id_map.joblib')
         hyena_preds['individual_id'] = hyena_preds.apply(lambda row: row: hyena_id.get(row['predicted_labels']), axis=1)
     
     if len(os.listdir('/Panthera_pardus')) != 0:
         leopard_clf = load('leopard_knn.joblib')
-        leopard_preds = indiv_rec.predict_individuals('/Panthera_pardus', backbone_new, leopard_clf)
+        leopard_preds = indiv_rec.predict_individuals('/Panthera_pardus', backbone_new, device, leopard_clf)
         leopard_id = load('leopard_id_map.joblib')
         leopard_preds['individual_id'] = leopard_preds.apply(lambda row: row: leopard_id.get(row['predicted_labels']), axis=1)
     
     if len(os.listdir('/Giraffa_tippelskirchi')) != 0:
         giraffe_clf = load('giraffe_knn.joblib')
-        giraffe_preds = indiv_rec.predict_individuals('/Giraffa_tippelskirchi', backbone_new, giraffe_clf)
+        giraffe_preds = indiv_rec.predict_individuals('/Giraffa_tippelskirchi', backbone_new, device, giraffe_clf)
         giraffe_id = load('giraffe_id_map.joblib')
         giraffe_preds['individual_id'] = giraffe_preds.apply(lambda row: row: giraffe_id.get(row['predicted_labels']), axis=1)
 

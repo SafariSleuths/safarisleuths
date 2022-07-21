@@ -11,18 +11,17 @@ from joblib import load
 from sklearn.preprocessing import normalize
 
 
-def predict_individuals(path2data, embedding_model, classifier):
+def predict_individuals(path2data, embedding_model, device, classifier):
     """
     Parameters:
     path2data: the full local filepath to a folder of cropped images of individuals
     embedding_model: a pre-trained Resnet backbone to extract the feature embeddings
+    device: whether to prdouce predictions on CPU or GPU
     classifier: a pre-trained classifier pipeline object
     Returns: a dataframe of full image paths and their predicted labels
     """
     # Create a list to store the embeddings
     embeddings = []
-    # Set the device for model training on GPU if possible
-    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     embedding_model = embedding_model.to(device)
     embedding_model.eval()
     # Obtain the full file paths to each image in the folder
