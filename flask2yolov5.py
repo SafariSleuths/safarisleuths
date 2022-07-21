@@ -30,7 +30,6 @@ region_name= 'us-east-1')
 
 def yolov2coco(row, og_w, og_h, ):
     """Converts the Yolov predictions to Coco format, scaled to the input image size"""
-
     # Scale the Yolov predictions to normalize
     x1 = (row['xmin']/640)*og_w
     y1 = (row['ymin']/640)*og_h
@@ -133,8 +132,6 @@ def predict():
     backbone_new = nn.Sequential(*list(resnet18_new.children())[:-1])
     ckpt = torch.load('resnet18embed.pth')
     backbone_new.load_state_dict(ckpt['resnet18_parameters'])
-    # Specify if the embeddings should be evaluated on cpu or gpu
-    device = torch.device('cuda' if torch.cuda_is_available() else 'cpu')
 
     # Instantiate the species dataframes as None; None will be replaced if their folders are non-empty
     hyena_preds, leopard_preds, giraffe_preds = None, None, None
@@ -142,20 +139,20 @@ def predict():
     if len(os.listdir('/Crocuta_crocuta')) != 0:
         # Load the animal specific classifiers
         hyena_clf = load('hyena_knn.joblib')
-        hyena_preds = indiv_rec.predict_individuals('/Crocuta_crocuta', backbone_new, device, hyena_clf)
+        hyena_preds = indiv_rec.predict_individuals('/Crocuta_crocuta', backbone_new, hyena_clf)
         # Retrieve the saved file of integer labels to string ids and add the string ids to the dataframe
         hyena_id = load('hyena_id_map.joblib')
         hyena_preds['individual_id'] = hyena_preds.apply(lambda row: row: hyena_id.get(row['predicted_labels']), axis=1)
     
     if len(os.listdir('/Panthera_pardus')) != 0:
         leopard_clf = load('leopard_knn.joblib')
-        leopard_preds = indiv_rec.predict_individuals('/Panthera_pardus', backbone_new, device, leopard_clf)
+        leopard_preds = indiv_rec.predict_individuals('/Panthera_pardus', backbone_new, leopard_clf)
         leopard_id = load('leopard_id_map.joblib')
         leopard_preds['individual_id'] = leopard_preds.apply(lambda row: row: leopard_id.get(row['predicted_labels']), axis=1)
     
     if len(os.listdir('/Giraffa_tippelskirchi')) != 0:
         giraffe_clf = load('giraffe_knn.joblib')
-        giraffe_preds = indiv_rec.predict_individuals('/Giraffa_tippelskirchi', backbone_new, device, giraffe_clf)
+        giraffe_preds = indiv_rec.predict_individuals('/Giraffa_tippelskirchi', backbone_new, giraffe_clf)
         giraffe_id = load('giraffe_id_map.joblib')
         giraffe_preds['individual_id'] = giraffe_preds.apply(lambda row: row: giraffe_id.get(row['predicted_labels']), axis=1)
 
