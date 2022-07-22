@@ -133,7 +133,7 @@ def predict():
             predicted_species=yolov_prediction.predicted_species,
             predicted_name=individual_prediction.individual_name,
         ))
-    return {'annotations': [a._asdict() for a in annotations]}
+    return {'annotations': [a.asdict() for a in annotations]}
 
 
 def x():
