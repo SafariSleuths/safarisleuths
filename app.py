@@ -11,6 +11,8 @@ import re
 import flask
 from flask import request, send_from_directory
 
+from s3_client import s3_bucket
+
 app = flask.Flask(__name__, static_url_path='', static_folder='ui/build')
 
 WEBSITE_DATA = 'api/website-data'
@@ -18,16 +20,13 @@ DEMO_PATH = WEBSITE_DATA + '/demo'
 
 redis_client = redis.Redis(decode_responses=True)
 
-S3_ACCESS_KEY = os.getenv('S3_ACCESS_KEY')
-S3_SECRET_KEY = os.getenv('S3_SECRET_KEY')
+
 S3_BUCKET_URL = 'https://animal-id-sagemaker.s3-website-us-east-1.amazonaws.com'
 LOCAL_INPUTS_PATH = 'website-data/inputs'
 LOCAL_OUTPUTS_PATH = 'website-data/outputs'
 S3_INPUTS_PATH = 'website-data/inputs'
 S3_OUTPUTS_PATH = 'website-data/outputs'
 
-s3 = boto3.resource('s3', aws_access_key_id=S3_ACCESS_KEY, aws_secret_access_key=S3_SECRET_KEY)
-s3_bucket = s3.Bucket('animal-id-sagemaker')
 
 REDIS_KEY_SESSIONS = 'sessions'
 
@@ -89,7 +88,7 @@ class ImagesResponse(TypedDict):
 
 
 def must_get_session_id() -> str:
-    session_id = request.headers.get('SessionID')
+    session_id = request.headers.get('SessionID', '')
     if session_id == '':
         flask.abort(400, 'Header `SessionID` required.')
     if not session_exists(session_id):
@@ -114,11 +113,14 @@ def post_images() -> ImagesResponse:
 @app.get('/api/v1/images')
 def get_images() -> ImagesResponse:
     session_id = must_get_session_id()
-    images = [o.key for o in s3_bucket.objects.filter(Prefix=f'{S3_INPUTS_PATH}/{session_id}/')]
-    return {'status': 'ok', 'images': images}
+    return {'status': 'ok', 'images': get_images_for_session(session_id)}
 
 
-@app.post('/api/v1/predict')
+def get_images_for_session(session_id: str) -> List[str]:
+    return [o.key for o in s3_bucket.objects.filter(Prefix=f'{S3_INPUTS_PATH}/{session_id}/')]
+
+
+@app.route('/api/v1/predict')
 def predict():
     with open(DEMO_PATH + '/annotations.json') as f:
         blob = json.load(f)

@@ -25,9 +25,7 @@ export function SourceFiles(props: {
 
   useEffect(() => {
     if (uploadedFiles === undefined) {
-      fetchImages(props.sessionID).then((data) =>
-        setUploadedFiles(data.images)
-      );
+      listImages(props.sessionID).then((data) => setUploadedFiles(data.images));
     }
   });
 
@@ -43,6 +41,7 @@ export function SourceFiles(props: {
         setSessionID={props.setSessionID}
       />
       <UploadForm
+        sessionID={props.sessionID}
         uploadedFiles={uploadedFiles}
         setUploadedFiles={setUploadedFiles}
       />
@@ -95,13 +94,15 @@ function SessionSelect(props: {
         <InputLabel id="session">Session</InputLabel>
         <Select
           size={"small"}
-          value={props.sessionID}
+          value={sessions !== undefined ? props.sessionID : ""}
           label="Session"
           id="session"
           onChange={(e) => props.setSessionID(e.target.value)}
         >
           {sessions?.map((session) => (
-            <MenuItem value={session.id}>{session.name}</MenuItem>
+            <MenuItem key={session.id} value={session.id}>
+              {session.name}
+            </MenuItem>
           ))}
         </Select>
       </Grid>
@@ -141,6 +142,7 @@ function SessionSelect(props: {
 }
 
 function UploadForm(props: {
+  sessionID: string;
   uploadedFiles: Array<string> | undefined;
   setUploadedFiles: (value: Array<string> | undefined) => void;
 }) {
@@ -159,10 +161,10 @@ function UploadForm(props: {
           onChange={(e) => setSelectedFiles(e.target.files)}
         />
         <Button
-          disabled={selectedFiles == null || true}
+          disabled={selectedFiles == null}
           onClick={() => {
             setShowLoading(true);
-            uploadFiles(selectedFiles).then((uploaded) => {
+            uploadImages(props.sessionID, selectedFiles).then((uploaded) => {
               setShowLoading(false);
               setSelectedFiles(null);
               props.setUploadedFiles([
@@ -186,7 +188,6 @@ function UploadForm(props: {
 }
 
 function deleteFiles(fileNames: Array<string>): Promise<Array<string>> {
-  console.log();
   return fetch("/api/v1/delete_files", {
     method: "POST",
     headers: {
@@ -199,7 +200,10 @@ function deleteFiles(fileNames: Array<string>): Promise<Array<string>> {
     .then((data) => data["deleted"] as Array<string>);
 }
 
-function uploadFiles(files: FileList | null): Promise<Array<string>> {
+function uploadImages(
+  sessionID: string,
+  files: FileList | null
+): Promise<Array<string>> {
   if (files === null) {
     return Promise.resolve([]);
   }
@@ -208,8 +212,9 @@ function uploadFiles(files: FileList | null): Promise<Array<string>> {
   for (let i = 0; i < files.length; i++) {
     data.append(files[i].name, files[i]);
   }
-  return fetch("/api/v1/upload_files", {
+  return fetch("/api/v1/images", {
     method: "POST",
+    headers: { SessionID: sessionID },
     body: data,
   })
     .then((resp) => resp.json())
@@ -260,7 +265,7 @@ interface ImagesResponse {
   images: Array<string>;
 }
 
-function fetchImages(sessionID: string): Promise<ImagesResponse> {
+function listImages(sessionID: string): Promise<ImagesResponse> {
   return fetch("/api/v1/images", {
     method: "GET",
     headers: {

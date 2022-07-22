@@ -26,7 +26,7 @@ function MainMenu() {
     setValue(newValue);
   };
 
-  const [sessionID, setSessionID] = React.useState("demo");
+  const [sessionID, setSessionID] = React.useState("Demo");
   let content = <Box />;
   switch (value) {
     case 0:
@@ -35,7 +35,7 @@ function MainMenu() {
       );
       break;
     case 1:
-      content = <Predictions sessionID={"0"} />;
+      content = <Predictions sessionID={sessionID} />;
       break;
     case 2:
       content = <KnownIndividuals />;

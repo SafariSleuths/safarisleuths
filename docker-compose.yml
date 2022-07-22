@@ -1,0 +1,9 @@
+version: "3.7"
+services:
+  redis:
+    image: redis:6
+    ports:
+      - target: 6379
+        published: 6379
+        protocol: tcp
+        mode: host

@@ -16,7 +16,7 @@ def predict_individuals(path2data, embedding_model, device, classifier):
     Parameters:
     path2data: the full local filepath to a folder of cropped images of individuals
     embedding_model: a pre-trained Resnet backbone to extract the feature embeddings
-    device: whether to prdouce predictions on CPU or GPU
+    device: whether to produce predictions on CPU or GPU
     classifier: a pre-trained classifier pipeline object
     Returns: a dataframe of full image paths and their predicted labels
     """
