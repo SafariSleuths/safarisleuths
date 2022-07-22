@@ -6,7 +6,7 @@ import argparse
 
 import io
 import os
-from typing import List, Tuple, NamedTuple, Optional
+from typing import List, Tuple, NamedTuple, Optional, TypedDict, Any, Dict
 
 import PIL.Image
 import pandas
@@ -23,7 +23,7 @@ from torch import nn
 import indiv_rec
 from joblib import load
 
-from predict_bounding_boxes import predict_bounding_boxes, read_images, YolovPrediction
+from predict_bounding_boxes import predict_bounding_boxes, read_images, YolovPrediction, BoundingBox
 from predict_individual import predict_individuals_from_yolov_predictions, IndividualPrediction
 from s3_client import s3_bucket
 
@@ -94,6 +94,11 @@ class Annotation(NamedTuple):
     predicted_species: Optional[str]
     predicted_name: Optional[str]
 
+    def asdict(self) -> Dict[str, Any]:
+        data = self._asdict()
+        data['bbox'] = self.bbox._asdict()
+        return data
+
 
 INPUTS_PATH = 'website-data/inputs'
 
@@ -128,7 +133,7 @@ def predict():
             predicted_species=yolov_prediction.predicted_species,
             predicted_name=individual_prediction.individual_name,
         ))
-    return annotations
+    return {'annotations': [a._asdict() for a in annotations]}
 
 
 def x():
