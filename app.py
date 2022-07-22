@@ -11,6 +11,7 @@ import re
 import flask
 from flask import request, send_from_directory
 
+from predict_bounding_boxes import predict_bounding_boxes, read_images, crop_image_to_bbox
 from s3_client import s3_bucket
 
 app = flask.Flask(__name__, static_url_path='', static_folder='ui/build')
@@ -20,13 +21,11 @@ DEMO_PATH = WEBSITE_DATA + '/demo'
 
 redis_client = redis.Redis(decode_responses=True)
 
-
 S3_BUCKET_URL = 'https://animal-id-sagemaker.s3-website-us-east-1.amazonaws.com'
 LOCAL_INPUTS_PATH = 'website-data/inputs'
 LOCAL_OUTPUTS_PATH = 'website-data/outputs'
 S3_INPUTS_PATH = 'website-data/inputs'
 S3_OUTPUTS_PATH = 'website-data/outputs'
-
 
 REDIS_KEY_SESSIONS = 'sessions'
 
@@ -122,14 +121,13 @@ def get_images_for_session(session_id: str) -> List[str]:
 
 @app.route('/api/v1/predict')
 def predict():
-    with open(DEMO_PATH + '/annotations.json') as f:
-        blob = json.load(f)
-    for k in blob['annotations']:
-        if 'confidence' in k:
-            continue
-        k['confidence'] = (zlib.crc32(bytes(k['image_src'], 'utf8')) % 20 + 80) / 100
-    return blob
+    session_id = must_get_session_id()
+    file_names = get_images_for_session(session_id)
+    input_images = read_images(file_names)
 
+    predictions = []
+    for input_image in input_images:
+        predictions + predict_bounding_boxes(input_image, session_id)
 
 @app.get('/api/v1/annotations')
 def get_annotations():
