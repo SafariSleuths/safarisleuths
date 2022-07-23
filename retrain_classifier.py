@@ -175,7 +175,7 @@ def full_classifier_retrain(s3_resource, s3_bucket, species, local_img_path):
     cv = KFold(n_splits=5, random_state=1, shuffle=True)
 
     # Define the parameter grid for the KNN model to be searched
-    knn_param_grid = = [{'pca__n_components': [0.8, 0.9, 0.95, 0.99],
+    knn_param_grid = [{'pca__n_components': [0.8, 0.9, 0.95, 0.99],
                          'KNN__n_neighbors': [1, 3, 5, 10], 
                          'KNN__weights': ['uniform', 'distance'], 
                          'KNN__metric': ['euclidean', 'manhattan', 'cosine']}]
