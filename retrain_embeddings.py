@@ -78,7 +78,6 @@ class EmbeddingImageDataset(Dataset):
             f.flush()
             f.close()
             image = Image.open(tmp_name)
-        self.transform = transforms.Resize((224,224))
         image = self.transform(image)
         return image, label, img_name
 
@@ -89,6 +88,7 @@ class LocalImageDataset(Dataset):
         self.imgs = glob.glob(local_img_path + '/*/*)
         # Set the mapping of their string labels to integers based upon prior S3 images
         self.class_to_idx = animal_id_map
+        self.transform = transforms.Resize((224,224))
     
     def __len__(self):
         return len(self.imgs)
@@ -101,7 +101,6 @@ class LocalImageDataset(Dataset):
         img_label = self.class_to_idx[animal_name]
         # Open the image and resize it to the required dimensions for Resnet18
         im = Image.open(img_path).convert('RGB')
-        self.transform = transforms.Resize((224,224))
         im = self.transform(im)
         return im, img_label, img_path
 
@@ -173,7 +172,6 @@ def main(uploaded_images, s3_resource, s3_bucket):
         )
     # Use the same batch size as the model was initially trained with
     batch_size=128
-
     num_workers = 2
     
     # Create the dataloaders to train the embeddings and the classifier
