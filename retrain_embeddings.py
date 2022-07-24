@@ -1,3 +1,4 @@
+#!/usr/bin/python
 # Import libraries for creation of custom dataset and dataloader
 import os
 import glob
@@ -30,7 +31,7 @@ def embedding_num_sample(uploaded_images):
     # The batch size for SimCLR is 128
     batch_size = 128
     # Find the number of uploaded images
-    len_uploaded_images = len(glog.glob(uploaded_images + '/*/*'))
+    len_uploaded_images = len(glob.glob(uploaded_images + '/*/*'))
     # Set the ratio as 2 old training images for each new one
     ratio = 2
     total_images = ((int(len_uploaded_images * 3) // 128) + 1) * 128
