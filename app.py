@@ -105,7 +105,7 @@ def get_predictions() -> GetPredictionsResponse:
     session_id = must_get_session_id()
     yolov_predictions = []
     for input_image in inputs.read_images_for_session(session_id):
-        yolov_predictions + predict_bounding_boxes(input_image, session_id)
+        yolov_predictions += predict_bounding_boxes(input_image, session_id)
 
     #individual_predictions = predict_individuals_from_yolov_predictions(yolov_predictions)
     individual_predictions = predict_none_from_yolov_predictions(yolov_predictions)
