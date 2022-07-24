@@ -1,5 +1,6 @@
 from __future__ import annotations
 import json
+import os
 from typing import List, TypedDict, Optional
 import re
 import flask
@@ -150,4 +151,5 @@ def serve():
 
 if __name__ == "__main__":
     redis_client.hset(sessions.REDIS_KEY, 'Demo', '{"id":"Demo","name":"Demo"}')
+    print(os.getcwd())
     app.run()

@@ -1,10 +1,12 @@
-from typing import NamedTuple, List, Dict, Iterable, Optional
+import json
+from typing import NamedTuple, List, Dict, Iterable, Optional, Tuple
 
 import numpy as np
 import torch
 import torchvision
 import PIL.Image
-from joblib import load
+import joblib
+from torch.utils.data import Dataset, DataLoader
 from torchvision import transforms
 from sklearn.preprocessing import normalize
 
@@ -69,16 +71,16 @@ def predict_individuals_from_species(
     label_to_name = {None: None}
 
     if species == 'Crocuta_crocuta':
-        classifier = load(f'{MODELS_PATH}/hyena_knn.joblib')
-        label_to_name = load(f'{MODELS_PATH}/hyena_id_map.joblib')
+        classifier = joblib.load(f'{MODELS_PATH}/hyena_knn.joblib')
+        label_to_name = joblib.load(f'{MODELS_PATH}/hyena_id_map.joblib')
 
     if species == 'Panthera_pardus':
-        classifier = load(f'{MODELS_PATH}/leopard_knn.joblib')
-        label_to_name = load(f'{MODELS_PATH}/leopard_id_map.joblib')
+        classifier = joblib.load(f'{MODELS_PATH}/leopard_knn.joblib')
+        label_to_name = joblib.load(f'{MODELS_PATH}/leopard_id_map.joblib')
 
     if species == 'Giraffa_tippelskirchi':
-        classifier = load(f'{MODELS_PATH}/giraffe_knn.joblib')
-        label_to_name = load(f'{MODELS_PATH}/giraffe_id_map.joblib')
+        classifier = joblib.load(f'{MODELS_PATH}/giraffe_knn.joblib')
+        label_to_name = joblib.load(f'{MODELS_PATH}/giraffe_id_map.joblib')
 
     embeddings = images_to_embeddings(backbone, device, file_names)
     predicted_labels = classifier.predict(embeddings)
@@ -93,20 +95,32 @@ def predict_individuals_from_species(
     return results
 
 
-def images_to_embeddings(backbone, device, file_names: List[str]) -> np.ndarray:
-    im_transform = transforms.Compose([
+class LocalImageDataset(Dataset):
+    transform = transforms.Compose([
         transforms.Resize((224, 224)),
         transforms.ToTensor(),
         transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
     ])
 
+    def __init__(self, file_names: List[str]):
+        self.file_names = file_names
+
+    def __len__(self):
+        return len(self.file_names)
+
+    def __getitem__(self, idx: int) -> Tuple[torch.Tensor, int]:
+        file_name = self.file_names[idx]
+        image = PIL.Image.open(file_name).convert('RGB')
+        return self.transform(image), 0
+
+
+def images_to_embeddings(backbone, device, file_names: List[str]) -> np.ndarray:
     embedding_tensors = []
+
+    data_loader = DataLoader(LocalImageDataset(file_names), batch_size=1)
     with torch.no_grad():
-        for file_name in file_names:
-            im = PIL.Image.open(file_name).convert('RGB')
-            im = im_transform(im)
-            im = im.to(device)
-            embedding = backbone(im).flatten(start_dim=1)
+        for batch, _ in data_loader:
+            embedding = backbone(batch.to(device)).flatten(start_dim=1)
             embedding_tensors.append(embedding)
 
     embeddings = normalize(torch.cat(embedding_tensors, 0).cpu())
