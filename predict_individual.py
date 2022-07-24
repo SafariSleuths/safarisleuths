@@ -10,6 +10,8 @@ from sklearn.preprocessing import normalize
 
 from predict_bounding_boxes import YolovPrediction
 
+MODELS_PATH = 'individ_rec_modelsandhelpers'
+
 
 class IndividualPrediction(NamedTuple):
     cropped_file_name: str
@@ -27,18 +29,11 @@ def group_yolov_predictions_by_species(predictions: List[YolovPrediction]) -> Di
     return results
 
 
-def predict_none_from_yolov_predictions(yolov_predictions: List[YolovPrediction]) -> List[IndividualPrediction]:
-    return [
-        IndividualPrediction(cropped_file_name=p.cropped_file_name, individual_name=None, individual_label=None)
-        for p in yolov_predictions
-    ]
-
-
 def predict_individuals_from_yolov_predictions(yolov_predictions: List[YolovPrediction]) -> List[IndividualPrediction]:
     # Load the pre-trained embeddings from the previously trained model backbone
     resnet18_new = torchvision.models.resnet18()
 
-    ckpt = torch.load('resnet18embed.pth')
+    ckpt = torch.load('individ_rec_modelsandhelpers/simclrresnet18embed.pth')
     backbone_new = torch.nn.Sequential(*list(resnet18_new.children())[:-1])
     backbone_new.load_state_dict(ckpt['resnet18_parameters'])
 
@@ -47,7 +42,7 @@ def predict_individuals_from_yolov_predictions(yolov_predictions: List[YolovPred
     backbone_new.eval()
 
     results = []
-    for species, yolov_predictions in group_yolov_predictions_by_species(yolov_predictions):
+    for species, yolov_predictions in group_yolov_predictions_by_species(yolov_predictions).items():
         results += predict_individuals_from_species(
             backbone=backbone_new,
             device=device,
@@ -74,19 +69,18 @@ def predict_individuals_from_species(
     label_to_name = {None: None}
 
     if species == 'Crocuta_crocuta':
-        classifier = load('hyena_knn.joblib')
-        label_to_name = load('hyena_id_map.joblib')
+        classifier = load(f'{MODELS_PATH}/hyena_knn.joblib')
+        label_to_name = load(f'{MODELS_PATH}/hyena_id_map.joblib')
 
     if species == 'Panthera_pardus':
-        classifier = load('leopard_knn.joblib')
-        label_to_name = load('leopard_id_map.joblib')
+        classifier = load(f'{MODELS_PATH}/leopard_knn.joblib')
+        label_to_name = load(f'{MODELS_PATH}/leopard_id_map.joblib')
 
     if species == 'Giraffa_tippelskirchi':
-        classifier = load('giraffe_knn.joblib')
-        label_to_name = load('giraffe_id_map.joblib')
+        classifier = load(f'{MODELS_PATH}/giraffe_knn.joblib')
+        label_to_name = load(f'{MODELS_PATH}/giraffe_id_map.joblib')
 
-    images = [PIL.Image.open(file_name).convert('RGB') for file_name in file_names]
-    embeddings = images_to_embeddings(backbone, device, images)
+    embeddings = images_to_embeddings(backbone, device, file_names)
     predicted_labels = classifier.predict(embeddings)
     results = []
     for file_name, label in zip(file_names, predicted_labels):
@@ -99,17 +93,17 @@ def predict_individuals_from_species(
     return results
 
 
-def images_to_embeddings(backbone, device, images: List[PIL.Image.Image]) -> np.ndarray:
+def images_to_embeddings(backbone, device, file_names: List[str]) -> np.ndarray:
     im_transform = transforms.Compose([
         transforms.Resize((224, 224)),
         transforms.ToTensor(),
-        # Normalize the input images using ImageNet values.
-        transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
+        transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
     ])
 
     embedding_tensors = []
     with torch.no_grad():
-        for im in images:
+        for file_name in file_names:
+            im = PIL.Image.open(file_name).convert('RGB')
             im = im_transform(im)
             im = im.to(device)
             embedding = backbone(im).flatten(start_dim=1)

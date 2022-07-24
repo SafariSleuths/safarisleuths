@@ -9,6 +9,7 @@ from api.inputs import InputImage
 from api.s3_client import s3_bucket
 
 OUTPUTS_PATH = 'website-data/outputs'
+BOX_COLOR = (0, 0, 255)
 
 object_detection_model = torch.hub.load(
     'ultralytics/yolov5', 'custom', 'frozen_backbone_coco_unlabeled_best.onnx', autoshape=True, force_reload=True
@@ -96,7 +97,7 @@ def crop_and_upload(image: PIL.Image.Image, dest: str, bbox: BoundingBox) -> Non
 
 
 def annotate_and_upload(image: PIL.Image.Image, dest: str, bbox: BoundingBox) -> None:
-    ImageDraw.Draw(image).rectangle(bbox.to_xy())
+    ImageDraw.Draw(image).rectangle(bbox.to_xy(), outline=BOX_COLOR, width=5)
     os.makedirs(os.path.dirname(dest), exist_ok=True)
     image.save(dest)
     s3_bucket.upload_file(dest, dest)
@@ -117,4 +118,6 @@ def yolov2coco(
     x2 = (xmax / 640) * original_width
     y1 = (ymin / 640) * original_height
     y2 = (ymax / 640) * original_height
-    return BoundingBox(x=x1, y=y1, w=x2 - x1, h=y2 - y1)
+    w = x2 - x1
+    h = y2 - y1
+    return BoundingBox(x=x1 + 1 / 2 * w, y=y1 - 1 / 2 * h, w=w, h=h)

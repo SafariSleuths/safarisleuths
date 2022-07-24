@@ -8,7 +8,7 @@ import api.sessions as sessions
 import api.inputs as inputs
 from api.redis_client import redis_client
 from predict_bounding_boxes import predict_bounding_boxes
-from predict_individual import predict_individuals_from_yolov_predictions, predict_none_from_yolov_predictions
+from predict_individual import predict_individuals_from_yolov_predictions
 
 app = flask.Flask(__name__, static_url_path='', static_folder='ui/build')
 
@@ -107,8 +107,7 @@ def get_predictions() -> GetPredictionsResponse:
     for input_image in inputs.read_images_for_session(session_id):
         yolov_predictions += predict_bounding_boxes(input_image, session_id)
 
-    #individual_predictions = predict_individuals_from_yolov_predictions(yolov_predictions)
-    individual_predictions = predict_none_from_yolov_predictions(yolov_predictions)
+    individual_predictions = predict_individuals_from_yolov_predictions(yolov_predictions)
 
     yolov_predictions.sort(key=lambda p: p.cropped_file_name)
     individual_predictions.sort(key=lambda p: p.cropped_file_name)
