@@ -27,6 +27,13 @@ def group_yolov_predictions_by_species(predictions: List[YolovPrediction]) -> Di
     return results
 
 
+def predict_none_from_yolov_predictions(yolov_predictions: List[YolovPrediction]) -> List[IndividualPrediction]:
+    return [
+        IndividualPrediction(cropped_file_name=p.cropped_file_name, individual_name=None, individual_label=None)
+        for p in yolov_predictions
+    ]
+
+
 def predict_individuals_from_yolov_predictions(yolov_predictions: List[YolovPrediction]) -> List[IndividualPrediction]:
     # Load the pre-trained embeddings from the previously trained model backbone
     resnet18_new = torchvision.models.resnet18()

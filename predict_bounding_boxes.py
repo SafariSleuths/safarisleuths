@@ -1,24 +1,18 @@
+import os.path
 from typing import NamedTuple, Optional, List, Dict, Tuple
 
 import PIL
 import torch
 from PIL import Image, ImageDraw
 
-from s3_client import s3_bucket
+from api.inputs import InputImage
+from api.s3_client import s3_bucket
 
 OUTPUTS_PATH = 'website-data/outputs'
 
 object_detection_model = torch.hub.load(
     'ultralytics/yolov5', 'custom', 'frozen_backbone_coco_unlabeled_best.onnx', autoshape=True, force_reload=True
 )
-
-
-class InputImage(NamedTuple):
-    file_name: str
-    original_image: PIL.Image.Image
-    original_height: int
-    original_width: int
-    resized_image: PIL.Image.Image
 
 
 class BoundingBox(NamedTuple):
@@ -42,21 +36,6 @@ class YolovPrediction(NamedTuple):
     predicted_species: Optional[str]
 
 
-def read_images(file_names: List[str]) -> List[InputImage]:
-    images = []
-    for file_name in file_names:
-        pil_image = PIL.Image.open(file_name)
-        width, height = pil_image.size
-        images.append(InputImage(
-            file_name=file_name,
-            original_image=pil_image,
-            original_height=width,
-            original_width=height,
-            resized_image=pil_image.resize((640, 640))
-        ))
-    return images
-
-
 def predict_bounding_boxes(input_image: InputImage, session_id: str) -> List[YolovPrediction]:
     raw_results = object_detection_model(input_image.resized_image, size=640).pandas().xyxy[0]
     raw_results.reset_index()
@@ -76,10 +55,11 @@ def predict_bounding_boxes(input_image: InputImage, session_id: str) -> List[Yol
     predictions = []
     for idx, prediction in raw_results.iterrows():
         species_name = prediction['name']
+        output_file_name = f'{idx}_{os.path.basename(input_image.file_name)}'
         predictions.append(YolovPrediction(
             file_name=input_image.file_name,
-            annotated_file_name=f'{OUTPUTS_PATH}/{session_id}/annotated/{species_name}/{idx}_{input_image.file_name}',
-            cropped_file_name=f'{OUTPUTS_PATH}/{session_id}/cropped/{species_name}/{idx}_{input_image.file_name}',
+            annotated_file_name=f'{OUTPUTS_PATH}/{session_id}/annotated/{species_name}/{output_file_name}',
+            cropped_file_name=f'{OUTPUTS_PATH}/{session_id}/cropped/{species_name}/{output_file_name}',
             original_image=input_image.original_image,
             bbox=yolov2coco(
                 xmin=prediction['xmin'],
@@ -110,14 +90,16 @@ def predict_bounding_boxes(input_image: InputImage, session_id: str) -> List[Yol
 
 
 def crop_and_upload(image: PIL.Image.Image, dest: str, bbox: BoundingBox) -> None:
+    os.makedirs(os.path.dirname(dest), exist_ok=True)
     image.crop(bbox.to_xy()).save(dest)
-    s3_bucket.copy(dest, dest)
+    s3_bucket.upload_file(dest, dest)
 
 
 def annotate_and_upload(image: PIL.Image.Image, dest: str, bbox: BoundingBox) -> None:
     ImageDraw.Draw(image).rectangle(bbox.to_xy())
+    os.makedirs(os.path.dirname(dest), exist_ok=True)
     image.save(dest)
-    s3_bucket.copy(dest, dest)
+    s3_bucket.upload_file(dest, dest)
 
 
 def yolov2coco(

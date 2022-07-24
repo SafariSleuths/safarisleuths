@@ -1,7 +1,7 @@
 import React from "react";
 import "./App.css";
 import { Box, Stack, Tab, Tabs } from "@mui/material";
-import { Predictions } from "./Predictions";
+import { ViewPredictions } from "./ViewPredictions";
 import { SourceFiles } from "./SourceFiles";
 import { KnownIndividuals } from "./KnownIndividuals";
 import { Documentation } from "./Documentation";
@@ -35,7 +35,7 @@ function MainMenu() {
       );
       break;
     case 1:
-      content = <Predictions sessionID={sessionID} />;
+      content = <ViewPredictions sessionID={sessionID} />;
       break;
     case 2:
       content = <KnownIndividuals />;
