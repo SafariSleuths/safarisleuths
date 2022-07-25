@@ -61,29 +61,30 @@ def predict_bounding_boxes(input_image: InputImage, session_id: str) -> List[Yol
         output_file_name = f'{idx}_{os.path.basename(input_image.file_name)}'
         annotated_file_name = f'{OUTPUTS_PATH}/{session_id}/annotated/{species_name}/{output_file_name}'
         cropped_file_name = f'{OUTPUTS_PATH}/{session_id}/cropped/{species_name}/{output_file_name}'
+        bbox = yolov2coco(
+            xmin=prediction['xmin'],
+            xmax=prediction['xmax'],
+            ymin=prediction['ymin'],
+            ymax=prediction['ymax'],
+            original_width=input_image.original_width,
+            original_height=input_image.original_height
+        )
         crop_and_upload(
             image=input_image.original_image.copy(),
             dest=cropped_file_name,
-            bbox=prediction.bbox
+            bbox=bbox
         )
         annotate_and_upload(
             image=input_image.original_image.copy(),
             dest=annotated_file_name,
-            bbox=prediction.bbox
+            bbox=bbox
         )
         predictions.append(YolovPrediction(
             id=output_file_name.removesuffix('.jpg'),
             file_name=input_image.file_name,
             annotated_file_name=annotated_file_name,
             cropped_file_name=cropped_file_name,
-            bbox=yolov2coco(
-                xmin=prediction['xmin'],
-                xmax=prediction['xmax'],
-                ymin=prediction['ymin'],
-                ymax=prediction['ymax'],
-                original_width=input_image.original_width,
-                original_height=input_image.original_height
-            ),
+            bbox=bbox,
             bbox_confidence=prediction['confidence'],
             bbox_label=prediction['class'],
             predicted_species=prediction['name']

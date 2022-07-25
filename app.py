@@ -7,9 +7,10 @@ import flask
 from flask import request, send_from_directory
 import api.sessions as sessions
 import api.inputs as inputs
+from retrain_classifier import retrain_classifier
 from api.annotations import Annotation, save_annotations_for_session, fetch_annotations_for_session
 from api.redis_client import redis_client
-from predict_bounding_boxes import predict_bounding_boxes, crop_and_upload, annotate_and_upload
+from predict_bounding_boxes import predict_bounding_boxes, crop_and_upload, annotate_and_upload, BoundingBox
 from predict_individual import predict_individuals_from_yolov_predictions
 
 app = flask.Flask(__name__, static_url_path='', static_folder='ui/build')
@@ -121,18 +122,21 @@ def get_predictions() -> GetPredictionsResponse:
     return {'status': 'ok', 'annotations': annotations}
 
 
-REDIS_KEY_ANNOTATIONS = 'annotations'
-
-
 @app.post('/api/v1/annotations')
 def post_annotations() -> StatusResponse:
     session_id = must_get_session_id()
-    annotations = request.get_json()
+    annotations: List[Annotation] = request.get_json()
     save_annotations_for_session(session_id, annotations)
     for annotation in annotations:
-        image = PIL.Image.open(annotation.file_name)
-        crop_and_upload(image.copy(), annotation.cropped_file_name, annotation.bbox)
-        annotate_and_upload(image.copy(), annotation.annotated_file_name, annotation.bbox)
+        image = PIL.Image.open(annotation['file_name'])
+        bbox = BoundingBox(
+            x=annotation['bbox'][0],
+            y=annotation['bbox'][1],
+            w=annotation['bbox'][2],
+            h=annotation['bbox'][3]
+        )
+        crop_and_upload(image.copy(), annotation['cropped_file_name'], bbox)
+        annotate_and_upload(image.copy(), annotation['annotated_file_name'], bbox)
     return {'status': 'ok'}
 
 
@@ -140,10 +144,7 @@ def post_annotations() -> StatusResponse:
 def get_retrain_classifier():
     session_id = must_get_session_id()
     annotations = fetch_annotations_for_session(session_id)
-    annotations = [a for a in annotations if a['accepted']]
-
-    # Copy the original images into the training data w/ animal id in the path /new_data/confirmed_name/image.jpg
-    # Track new images and
+    retrain_classifier(annotations)
 
 
 @app.get("/")

@@ -47,27 +47,6 @@ export function ViewPredictions(props: { sessionID: string }) {
 
   const [showLoading, setShowLoading] = useState(false);
 
-  function getPredictions() {
-    setShowLoading(true);
-    fetchPredictions(props.sessionID).then((data) => {
-      data.annotations.sort((a, b) => {
-        switch (true) {
-          case a.predicted_name == b.predicted_name:
-            return 0;
-          case a.predicted_name !== undefined && b.predicted_name !== undefined:
-            return a.predicted_name?.localeCompare(b.predicted_name || "") || 0;
-          case a.predicted_name == undefined:
-            return 1;
-          default:
-            return -1;
-        }
-      });
-      writeAnnotationsCache(data.annotations);
-      setAnnotations(data.annotations);
-      setShowLoading(false);
-    });
-  }
-
   const jsonDownloadUrl = useJsonDownloadUrl(annotations);
   const annotationsByName: Map<string, Array<Annotation>> = (
     annotations || ([] as Array<Annotation>)
@@ -99,61 +78,121 @@ export function ViewPredictions(props: { sessionID: string }) {
         place, this will take significantly longer to complete. We haven't wired
         in the retraining pipeline, so the retraining button is disabled.
       </p>
-      <ButtonGroup>
-        <Tooltip title={"Compute predictions for the uploaded images."}>
-          <Button onClick={getPredictions}>Compute Results</Button>
-        </Tooltip>
-        <Tooltip title={"Download all annotations in json format."}>
-          <span>
-            <Button
-              href={jsonDownloadUrl || "#"}
-              disabled={jsonDownloadUrl === undefined}
-              download={"results.json"}
-            >
-              <Download /> Annotations
-            </Button>
-          </span>
-        </Tooltip>
-        <Tooltip title={"Kick off a retraining job"}>
-          <span>
-            <Button disabled>Start Retraining</Button>
-          </span>
-        </Tooltip>
-      </ButtonGroup>
+      <TopButtonGroup
+        sessionID={props.sessionID}
+        setAnnotations={setAnnotations}
+        setShowLoading={setShowLoading}
+        jsonDownloadUrl={jsonDownloadUrl}
+      />
+      <DisplayAnnotations
+        sessionID={props.sessionID}
+        showLoading={showLoading}
+        updateAnnotations={updateAnnotations}
+        annotationsByName={annotationsByName}
+      />
+    </Stack>
+  );
+}
 
-      {showLoading ? (
-        <Box alignContent={"center"} width={"100%"}>
-          <CircularProgress />
+function TopButtonGroup(props: {
+  sessionID: string;
+  setShowLoading: (v: boolean) => void;
+  setAnnotations: (v: Array<Annotation>) => void;
+  jsonDownloadUrl: string | undefined;
+}) {
+  const getPredictions = () =>
+    fetchAndSortPredictions(
+      props.sessionID,
+      props.setShowLoading,
+      props.setAnnotations
+    );
+
+  return (
+    <ButtonGroup>
+      <Tooltip title={"Compute predictions for the uploaded images."}>
+        <Button onClick={getPredictions}>Compute Results</Button>
+      </Tooltip>
+      <Tooltip title={"Download all annotations in json format."}>
+        <span>
+          <Button
+            href={props.jsonDownloadUrl || "#"}
+            disabled={props.jsonDownloadUrl === undefined}
+            download={"results.json"}
+          >
+            <Download /> Annotations
+          </Button>
+        </span>
+      </Tooltip>
+    </ButtonGroup>
+  );
+}
+
+function fetchAndSortPredictions(
+  sessionID: string,
+  setShowLoading: (v: boolean) => void,
+  setAnnotations: (v: Array<Annotation>) => void
+) {
+  setShowLoading(true);
+  fetchPredictions(sessionID).then((data) => {
+    data.annotations.sort((a, b) => {
+      switch (true) {
+        case a.predicted_name == b.predicted_name:
+          return 0;
+        case a.predicted_name !== undefined && b.predicted_name !== undefined:
+          return a.predicted_name?.localeCompare(b.predicted_name || "") || 0;
+        case a.predicted_name == undefined:
+          return 1;
+        default:
+          return -1;
+      }
+    });
+    writeAnnotationsCache(data.annotations);
+    setAnnotations(data.annotations);
+    setShowLoading(false);
+  });
+}
+
+function DisplayAnnotations(props: {
+  sessionID: string;
+  showLoading: boolean;
+  updateAnnotations: (updates: Array<Annotation>) => void;
+  annotationsByName: Map<string, Array<Annotation>>;
+}) {
+  if (props.showLoading) {
+    return (
+      <Box alignContent={"center"} width={"100%"}>
+        <CircularProgress />
+      </Box>
+    );
+  }
+
+  return (
+    <Stack spacing={4} hidden={props.showLoading}>
+      <Paper>
+        <Box margin={2}>
+          <h3>Summary</h3>
+          <SummaryTable annotationsByName={props.annotationsByName} />
         </Box>
-      ) : (
-        <Stack spacing={4}>
-          <Paper>
-            <Box margin={2}>
-              <h3>Summary</h3>
-              <SummaryTable annotationsByName={annotationsByName} />
-            </Box>
-          </Paper>
+      </Paper>
+      <AnimalBreakdown
+        sessionID={props.sessionID}
+        name={Undetected}
+        subtitle={"We could not detect or label the animal in these images."}
+        annotations={props.annotationsByName.get(Undetected) || []}
+        setAnnotations={props.updateAnnotations}
+      />
+      {Array.from(props.annotationsByName)
+        .filter(([name, _]) => name !== Undetected)
+        .map(([name, annotations]) => (
           <AnimalBreakdown
-            name={Undetected}
-            subtitle={
-              "We could not detect or label the animal in these images."
-            }
-            annotations={annotationsByName.get(Undetected) || []}
-            setAnnotations={updateAnnotations}
+            sessionID={props.sessionID}
+            key={name}
+            name={name}
+            subtitle={""}
+            annotations={annotations}
+            setAnnotations={props.updateAnnotations}
           />
-          {Array.from(annotationsByName)
-            .filter(([name, _]) => name !== Undetected)
-            .map(([name, annotations]) => (
-              <AnimalBreakdown
-                key={name}
-                name={name}
-                subtitle={""}
-                annotations={annotations}
-                setAnnotations={updateAnnotations}
-              />
-            ))}
-        </Stack>
-      )}
+        ))}
     </Stack>
   );
 }
@@ -178,7 +217,9 @@ function SummaryTable(props: {
             <TableRow key={i}>
               <TableCell>{i + 1}</TableCell>
               <TableCell>{name}</TableCell>
-              <TableCell>{annotations[0].predicted_species}</TableCell>
+              <TableCell>
+                {annotations[0].predicted_species.replace("_", " ")}
+              </TableCell>
               <TableCell>{annotations.length}</TableCell>
             </TableRow>
           ))}
@@ -190,6 +231,7 @@ function SummaryTable(props: {
 const Undetected = "undetected";
 
 function AnimalBreakdown(props: {
+  sessionID: string;
   name: string;
   annotations: Array<Annotation>;
   setAnnotations: (v: Array<Annotation>) => void;
@@ -205,6 +247,8 @@ function AnimalBreakdown(props: {
     title = `None detected (${pendingReview}/${props.annotations.length} reviewed)`;
   }
 
+  const species = props.annotations[0].predicted_species.replace("_", " ");
+
   return (
     <Box>
       <Accordion defaultExpanded={true}>
@@ -212,8 +256,11 @@ function AnimalBreakdown(props: {
           <h3>{title}</h3>
         </AccordionSummary>
         <AccordionDetails>
-          <Box>{props.subtitle}</Box>
+          <Box>
+            Species: <i>{species}</i>
+          </Box>
           <AnimalImageList
+            sessionID={props.sessionID}
             annotations={props.annotations}
             setAnnotations={props.setAnnotations}
           />
@@ -226,6 +273,7 @@ function AnimalBreakdown(props: {
 function AnimalImageList(props: {
   annotations: Array<Annotation>;
   setAnnotations: (v: Array<Annotation>) => void;
+  sessionID: string;
 }) {
   props.annotations.sort((a, b) => {
     let a_score = 0;
@@ -252,6 +300,7 @@ function AnimalImageList(props: {
     <ImageList cols={3} gap={12}>
       {props.annotations.map((annotation, i) => (
         <AnnotationImage
+          sessionID={props.sessionID}
           key={i}
           annotation={annotation}
           setAnnotation={(v: Annotation) => {
@@ -264,6 +313,7 @@ function AnimalImageList(props: {
 }
 
 function AnnotationImage(props: {
+  sessionID: string;
   annotation: Annotation;
   setAnnotation: (v: Annotation) => void;
 }) {
@@ -316,6 +366,7 @@ function AnnotationImage(props: {
         }
       />
       <AnnotationButtonsAndModal
+        sessionID={props.sessionID}
         annotation={props.annotation}
         setAnnotation={props.setAnnotation}
       />
@@ -353,6 +404,7 @@ function ImageModal(props: {
 function AnnotationButtonsAndModal(props: {
   annotation: Annotation;
   setAnnotation: (v: Annotation) => void;
+  sessionID: string;
 }) {
   const annotationJSON = JSON.stringify(props.annotation, null, 2);
   const [showForm, setShowForm] = React.useState(false);
@@ -378,6 +430,7 @@ function AnnotationButtonsAndModal(props: {
       headers: {
         Accept: "application/json",
         "Content-Type": "application/json",
+        SessionID: props.sessionID,
       },
       body: annotationsJSON,
     })
@@ -486,18 +539,24 @@ function CopyButton(props: { annotationJSON: string }) {
       })
       .then(() => setCopied(false));
 
+  let content = (
+    <>
+      <ContentCopy /> Annotation
+    </>
+  );
+
+  if (copied) {
+    content = (
+      <>
+        <Check /> Copied!
+      </>
+    );
+  }
+
   return (
     <Tooltip title="Copy the annotation to the clipboard." arrow>
       <Button size={"small"} onClick={onButtonClick}>
-        {copied ? (
-          <>
-            <Check /> Copied!
-          </>
-        ) : (
-          <>
-            <ContentCopy /> Annotation
-          </>
-        )}
+        {content}
       </Button>
     </Tooltip>
   );
