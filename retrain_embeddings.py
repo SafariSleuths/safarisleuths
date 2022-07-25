@@ -22,12 +22,8 @@ def embedding_num_sample(uploaded_images):
     uploaded_images: a local file path of uploaded images
     Returns: the number of prior training images to sample from S3
     """
-    # The batch size for SimCLR is 128
     batch_size = 128
-    # Find the number of uploaded images
     len_uploaded_images = len(glob.glob(uploaded_images + '/*/*'))
-    # Set the ratio as 2 old training images for each new one
-    ratio = 2
     total_images = ((int(len_uploaded_images * 3) // batch_size) + 1) * batch_size
     len_old_images = total_images - len_uploaded_images
     return len_old_images

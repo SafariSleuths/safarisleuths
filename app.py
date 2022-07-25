@@ -1,14 +1,15 @@
-from __future__ import annotations
-import json
 import os
-from typing import List, TypedDict, Optional
+from typing import List, TypedDict
 import re
+
+import PIL.Image
 import flask
 from flask import request, send_from_directory
 import api.sessions as sessions
 import api.inputs as inputs
+from api.annotations import Annotation, save_annotations_for_session, fetch_annotations_for_session
 from api.redis_client import redis_client
-from predict_bounding_boxes import predict_bounding_boxes
+from predict_bounding_boxes import predict_bounding_boxes, crop_and_upload, annotate_and_upload
 from predict_individual import predict_individuals_from_yolov_predictions
 
 app = flask.Flask(__name__, static_url_path='', static_folder='ui/build')
@@ -82,17 +83,6 @@ def post_images() -> StatusResponse:
     return {'status': 'ok'}
 
 
-class Annotation(TypedDict):
-    id: int
-    file_name: str
-    annotated_file_name: Optional[str]
-    cropped_file_name: Optional[str]
-    bbox: Optional[List[float]]
-    bbox_confidence: float
-    predicted_species: str
-    predicted_name: str
-
-
 class GetPredictionsResponse(TypedDict):
     status: str
     annotations: List[Annotation]
@@ -113,11 +103,11 @@ def get_predictions() -> GetPredictionsResponse:
     yolov_predictions.sort(key=lambda p: p.cropped_file_name)
     individual_predictions.sort(key=lambda p: p.cropped_file_name)
     annotations = []
-    for annotation_id, yolov_prediction, individual_prediction in zip(
-            range(len(yolov_predictions)), yolov_predictions, individual_predictions
+    for yolov_prediction, individual_prediction in zip(
+            yolov_predictions, individual_predictions
     ):
         annotations.append(Annotation(
-            id=annotation_id,
+            id=os.path.basename(yolov_prediction.cropped_file_name),
             file_name=yolov_prediction.file_name,
             annotated_file_name=yolov_prediction.annotated_file_name,
             cropped_file_name=yolov_prediction.cropped_file_name,
@@ -125,6 +115,8 @@ def get_predictions() -> GetPredictionsResponse:
             bbox_confidence=yolov_prediction.bbox_confidence or 0,
             predicted_species=yolov_prediction.predicted_species or UNDETECTED,
             predicted_name=individual_prediction.individual_name or UNDETECTED,
+            accepted=False,
+            ignored=False,
         ))
     return {'status': 'ok', 'annotations': annotations}
 
@@ -134,24 +126,22 @@ REDIS_KEY_ANNOTATIONS = 'annotations'
 
 @app.post('/api/v1/annotations')
 def post_annotations() -> StatusResponse:
-    session_id = "Demo"
-
-    updates = request.get_json()
-    for annotation in updates:
-        annotation_json = json.dumps(annotation)
-        redis_client.hset(f'{REDIS_KEY_ANNOTATIONS}:{session_id}', annotation['id'], annotation_json)
-        # Recrop the image w/ the new annotation.
-        # Redraw bounding box.
-
+    session_id = must_get_session_id()
+    annotations = request.get_json()
+    save_annotations_for_session(session_id, annotations)
+    for annotation in annotations:
+        image = PIL.Image.open(annotation.file_name)
+        crop_and_upload(image.copy(), annotation.cropped_file_name, annotation.bbox)
+        annotate_and_upload(image.copy(), annotation.annotated_file_name, annotation.bbox)
     return {'status': 'ok'}
 
 
 @app.get('/api/v1/retrain')
-def get_retrain():
-    vals = redis_client.hvals(f'{REDIS_KEY_ANNOTATIONS}:{session_id}')
+def get_retrain_classifier():
+    session_id = must_get_session_id()
+    annotations = fetch_annotations_for_session(session_id)
+    annotations = [a for a in annotations if a['accepted']]
 
-    # Read in the annotations
-    # Filter for confirmed/approved annotations
     # Copy the original images into the training data w/ animal id in the path /new_data/confirmed_name/image.jpg
     # Track new images and
 
@@ -162,6 +152,4 @@ def serve():
 
 
 if __name__ == "__main__":
-    redis_client.hset(sessions.REDIS_KEY, 'Demo', '{"id":"Demo","name":"Demo"}')
-    print(os.getcwd())
     app.run()

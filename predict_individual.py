@@ -47,27 +47,28 @@ class IndividualPrediction(NamedTuple):
 
 
 def predict_individuals_from_yolov_predictions(yolov_predictions: List[YolovPrediction]) -> List[IndividualPrediction]:
-    # Load the pre-trained embeddings from the previously trained model backbone
-    resnet18_new = torchvision.models.resnet18()
-
-    ckpt = torch.load('individ_rec_modelsandhelpers/simclrresnet18embed.pth')
-    backbone_new = torch.nn.Sequential(*list(resnet18_new.children())[:-1])
-    backbone_new.load_state_dict(ckpt['resnet18_parameters'])
-
-    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-    backbone_new = backbone_new.to(device)
-    backbone_new.eval()
-
+    backbone, device = load_backbone()
     results = []
     for species, yolov_predictions in group_yolov_predictions_by_species(yolov_predictions).items():
         results += predict_individuals_from_species(
-            backbone=backbone_new,
+            backbone=backbone,
             device=device,
             species=species,
             file_names=[p.cropped_file_name for p in yolov_predictions]
         )
 
     return results
+
+
+def load_backbone():
+    resnet18 = torchvision.models.resnet18()
+    backbone = torch.nn.Sequential(*list(resnet18.children())[:-1])
+    ckpt = torch.load('individ_rec_modelsandhelpers/simclrresnet18embed.pth')
+    backbone.load_state_dict(ckpt['resnet18_parameters'])
+    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    backbone = backbone.to(device)
+    backbone.eval()
+    return backbone, device
 
 
 def group_yolov_predictions_by_species(predictions: List[YolovPrediction]) -> Dict[str, List[YolovPrediction]]:
