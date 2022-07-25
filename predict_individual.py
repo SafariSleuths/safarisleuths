@@ -15,20 +15,35 @@ from predict_bounding_boxes import YolovPrediction
 MODELS_PATH = 'individ_rec_modelsandhelpers'
 
 
+class LocalImageDataset(Dataset):
+    transform = transforms.Compose([
+        transforms.Resize((224, 224)),
+        transforms.ToTensor(),
+        transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
+    ])
+
+    def __init__(self, file_names: List[str]):
+        self.file_names = file_names
+
+    def __len__(self):
+        return len(self.file_names)
+
+    def __getitem__(self, idx: int) -> Tuple[torch.Tensor, int]:
+        file_name = self.file_names[idx]
+        image = PIL.Image.open(file_name).convert('RGB')
+        return self.transform(image), 0
+
+
+class NoneClassifier:
+    @staticmethod
+    def predict(embeddings) -> Iterable[None]:
+        return [None] * len(embeddings)
+
+
 class IndividualPrediction(NamedTuple):
     cropped_file_name: str
     individual_label: Optional[int]
     individual_name: Optional[str]
-
-
-def group_yolov_predictions_by_species(predictions: List[YolovPrediction]) -> Dict[str, List[YolovPrediction]]:
-    results = {}
-    for prediction in predictions:
-        species = prediction.predicted_species
-        if species not in results:
-            results[species] = []
-        results[species].append(prediction)
-    return results
 
 
 def predict_individuals_from_yolov_predictions(yolov_predictions: List[YolovPrediction]) -> List[IndividualPrediction]:
@@ -55,10 +70,14 @@ def predict_individuals_from_yolov_predictions(yolov_predictions: List[YolovPred
     return results
 
 
-class NoneClassifier:
-    @staticmethod
-    def predict(embeddings) -> Iterable[None]:
-        return [None] * len(embeddings)
+def group_yolov_predictions_by_species(predictions: List[YolovPrediction]) -> Dict[str, List[YolovPrediction]]:
+    results = {}
+    for prediction in predictions:
+        species = prediction.predicted_species
+        if species not in results:
+            results[species] = []
+        results[species].append(prediction)
+    return results
 
 
 def predict_individuals_from_species(
@@ -95,29 +114,10 @@ def predict_individuals_from_species(
     return results
 
 
-class LocalImageDataset(Dataset):
-    transform = transforms.Compose([
-        transforms.Resize((224, 224)),
-        transforms.ToTensor(),
-        transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
-    ])
-
-    def __init__(self, file_names: List[str]):
-        self.file_names = file_names
-
-    def __len__(self):
-        return len(self.file_names)
-
-    def __getitem__(self, idx: int) -> Tuple[torch.Tensor, int]:
-        file_name = self.file_names[idx]
-        image = PIL.Image.open(file_name).convert('RGB')
-        return self.transform(image), 0
-
-
 def images_to_embeddings(backbone, device, file_names: List[str]) -> np.ndarray:
     embedding_tensors = []
 
-    data_loader = DataLoader(LocalImageDataset(file_names), batch_size=1)
+    data_loader = DataLoader(LocalImageDataset(file_names), batch_size=1, shuffle=False)
     with torch.no_grad():
         for batch, _ in data_loader:
             embedding = backbone(batch.to(device)).flatten(start_dim=1)

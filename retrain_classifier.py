@@ -1,18 +1,11 @@
-#!/usr/bin/python
-# Libraries for constructing the dataset
-import os
 import glob
 from PIL import Image
 import torch
-import torch.nn as nn
-import torchvision
 from torchvision import transforms
 from torch.utils.data import Dataset, DataLoader, ConcatDataset
 import tempfile
-from torchvision.datasets import ImageFolder
 import numpy as np
 from sklearn.preprocessing import normalize
-import pandas as pd
 
 # Libraries for finding the best fit model and saving it
 from sklearn.model_selection import KFold
@@ -21,13 +14,12 @@ from sklearn.neighbors import KNeighborsClassifier
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import StandardScaler
 from sklearn.decomposition import PCA
-from joblib import dump, load
+from joblib import dump
 
-# Import S3 permissions and the bucket
-from s3_client import s3, s3_bucket
 
 class SpeciesOldTrainDataset(Dataset):
     """A custom class to retrieve and transform all of a species' S3 training images"""
+
     def __init__(self, s3_resource, s3_bucket, species):
 
         # Set the method for S3 access, the bucket, and the species to be retrained
@@ -39,15 +31,15 @@ class SpeciesOldTrainDataset(Dataset):
         if self.species == 'Crocuta_crocuta':
             self.train_folder = 'hyena.coco/processed/train/'
         elif self.species == 'Panthera_pardus':
-            self.train_folder == 'leopard.coco/processed/train/'
+            self.train_folder = 'leopard.coco/processed/train/'
         elif species == 'Giraffa_tippelskirchi':
-            self.train_folder == 'great_zebra_giraffe/individual_recognition/train/'
-        
+            self.train_folder = 'great_zebra_giraffe/individual_recognition/train/'
+
         # Get the training image paths to retrain the embeddings
         self.files = []
         for obj_sum in self.bucket.objects.filter(Prefix=self.train_folder):
-        if obj_sum.key.endswith('.jpg'):
-            self.files.append(obj_sum.key)
+            if obj_sum.key.endswith('.jpg'):
+                self.files.append(obj_sum.key)
 
         # Get the individual animal ids from their file folders
         self.labels = [x.split('/')[-2] for x in self.files]
@@ -58,11 +50,11 @@ class SpeciesOldTrainDataset(Dataset):
         self.transform = transforms.Compose([
             transforms.Resize((224, 224)),
             transforms.ToTensor(),
-            transforms.Normalize(mean=[0.485, 0.456,0.406], std=[0.229,0.224,0.225])])
+            transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])])
 
     def __len__(self):
         return len(self.files)
-    
+
     def __getitem__(self, idx):
         # Get the object name to be downloaded
         img_name = self.files[idx]
@@ -82,17 +74,19 @@ class SpeciesOldTrainDataset(Dataset):
         image = self.transform(image)
         return image, label
 
+
 class LocalImageClassifierDataset(Dataset):
     """A custom dataset for the locally saved images to be used in retraining"""
+
     def __init__(self, local_img_path, animal_id_map):
         # Get the full file paths of all local images for the re-training
-        self.imgs = glob.glob(local_img_path + '/*/*)
+        self.imgs = glob.glob(local_img_path + '/*/*')
         # Set the mapping of their string labels to integers based upon prior S3 images
         self.class_to_idx = animal_id_map
         self.transform = transforms.Compose([
             transforms.Resize((224, 224)),
             transforms.ToTensor(),
-            transforms.Normalize(mean=[0.485, 0.456,0.406], std=[0.229,0.224,0.225])])
+            transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])])
 
     def __len__(self):
         return len(self.imgs)
@@ -109,7 +103,7 @@ class LocalImageClassifierDataset(Dataset):
         return im, img_label
 
 
-def generate_embeddings(embedding_model, data_loader):
+def generate_embeddings(model, data_loader):
     """
     Parameters:
     embedding_model: a pretrained Resnet 18 backbone
@@ -144,7 +138,7 @@ def generate_embeddings(embedding_model, data_loader):
     return np.array(embeddings), np.array(labels)
 
 
-def full_classifier_retrain(s3_resource, s3_bucket, species, local_img_path):
+def full_classifier_retrain(s3_resource, s3_bucket, species, local_img_path, embedding_model):
     """
     Parameters:
     s3_resource: the method of accessing the S3 bucket
@@ -176,14 +170,14 @@ def full_classifier_retrain(s3_resource, s3_bucket, species, local_img_path):
 
     # Define the parameter grid for the KNN model to be searched
     knn_param_grid = [{'pca__n_components': [0.8, 0.9, 0.95, 0.99],
-                         'KNN__n_neighbors': [1, 3, 5, 10], 
-                         'KNN__weights': ['uniform', 'distance'], 
-                         'KNN__metric': ['euclidean', 'manhattan', 'cosine']}]
+                       'KNN__n_neighbors': [1, 3, 5, 10],
+                       'KNN__weights': ['uniform', 'distance'],
+                       'KNN__metric': ['euclidean', 'manhattan', 'cosine']}]
 
     # Define the pipe object to use in Grid Search
-    pipe_knn = Pipeline([('scaler', StandardScaler()), 
-                     ('pca', PCA()),
-                     ('KNN', KNeighborsClassifier())])
+    pipe_knn = Pipeline([('scaler', StandardScaler()),
+                         ('pca', PCA()),
+                         ('KNN', KNeighborsClassifier())])
 
     # Create a grid search object and parameters to be searched
     knn_grid_search = GridSearchCV(estimator=pipe_knn, param_grid=knn_param_grid, scoring='accuracy', cv=cv)
@@ -198,7 +192,7 @@ def full_classifier_retrain(s3_resource, s3_bucket, species, local_img_path):
     if species == 'Crocuta_crocuta':
         dump(clf, '/models/hyena_knn_last.joblib')
         print('Retraining of Crocuta crocuta classifier completed. Model saved as hyena_knn_last.joblib.')
-    
+
     elif species == 'Panthera_pardus':
         dump(clf, '/models/leopard_knn_last.joblib')
         print('Retraining of Panthera pardus classifier completed. Model saved as leopard_knn_last.joblib.')

@@ -120,4 +120,4 @@ def yolov2coco(
     y2 = (ymax / 640) * original_height
     w = x2 - x1
     h = y2 - y1
-    return BoundingBox(x=x1 + 1 / 2 * w, y=y1 - 1 / 2 * h, w=w, h=h)
+    return BoundingBox(x=x1, y=y1, w=w, h=h)

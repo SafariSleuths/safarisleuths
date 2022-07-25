@@ -129,19 +129,31 @@ def get_predictions() -> GetPredictionsResponse:
     return {'status': 'ok', 'annotations': annotations}
 
 
-@app.put('/api/v1/annotations')
-def put_annotation():
-    with open(DEMO_PATH + '/annotations.json') as f:
-        blob = json.load(f)
+REDIS_KEY_ANNOTATIONS = 'annotations'
 
-    annotation_by_id = {annotation['id']: annotation for annotation in blob['annotations']}
+
+@app.post('/api/v1/annotations')
+def post_annotations() -> StatusResponse:
+    session_id = "Demo"
+
     updates = request.get_json()
     for annotation in updates:
-        annotation_by_id[annotation['id']] = annotation
-    blob = {'annotations': [annotation for annotation in annotation_by_id.values()]}
-    with open(DEMO_PATH + '/annotations.json', 'w') as f:
-        json.dump(blob, f)
-    return blob
+        annotation_json = json.dumps(annotation)
+        redis_client.hset(f'{REDIS_KEY_ANNOTATIONS}:{session_id}', annotation['id'], annotation_json)
+        # Recrop the image w/ the new annotation.
+        # Redraw bounding box.
+
+    return {'status': 'ok'}
+
+
+@app.get('/api/v1/retrain')
+def get_retrain():
+    vals = redis_client.hvals(f'{REDIS_KEY_ANNOTATIONS}:{session_id}')
+
+    # Read in the annotations
+    # Filter for confirmed/approved annotations
+    # Copy the original images into the training data w/ animal id in the path /new_data/confirmed_name/image.jpg
+    # Track new images and
 
 
 @app.get("/")

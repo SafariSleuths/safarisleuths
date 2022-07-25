@@ -1,17 +1,12 @@
-#!/usr/bin/python
-# Import libraries for creation of custom dataset and dataloader
-import os
 import glob
 from PIL import Image
 import torch
 import torch.nn as nn
-import torchvision
 import random
 import torchvision
 from torchvision import transforms
 from torch.utils.data import Dataset, DataLoader, ConcatDataset
 import tempfile
-# Import libraries for modeling and training
 import pytorch_lightning as pl
 import lightly
 from lightly.models.modules.heads import SimCLRProjectionHead
@@ -19,8 +14,7 @@ from lightly.loss import NTXentLoss
 from pytorch_lightning.callbacks import EarlyStopping
 from pytorch_lightning import Trainer
 from pytorch_lightning.loggers import CSVLogger
-# Import the S3 client and bucket for image retrieval
-from s3_client import s3, s3_bucket
+
 
 def embedding_num_sample(uploaded_images):
     """
@@ -34,22 +28,23 @@ def embedding_num_sample(uploaded_images):
     len_uploaded_images = len(glob.glob(uploaded_images + '/*/*'))
     # Set the ratio as 2 old training images for each new one
     ratio = 2
-    total_images = ((int(len_uploaded_images * 3) // 128) + 1) * 128
+    total_images = ((int(len_uploaded_images * 3) // batch_size) + 1) * batch_size
     len_old_images = total_images - len_uploaded_images
     return len_old_images
 
 
 class EmbeddingImageDataset(Dataset):
     """A custom class to retrieve and transform randomly-selected S3 training images"""
-    def __init__(self,s3_resource, s3_bucket, num_imgs):
+
+    def __init__(self, s3_resource, s3_bucket, num_imgs):
         self.s3 = s3_resource
         self.num2sample = num_imgs
         self.bucket = s3_bucket
         # Get the training image paths to retrain the embeddings
         self.files = []
         for obj_sum in self.bucket.objects.filter(Prefix='all_animal_recognition/train/'):
-        if obj_sum.key.endswith('.jpg'):
-            self.files.append(obj_sum.key)
+            if obj_sum.key.endswith('.jpg'):
+                self.files.append(obj_sum.key)
         # Randomly sample the training data to obtain the required image count
         self.selected_imgs = random.sample(self.files, self.num2sample)
         # Get the individual animal ids from their file folders
@@ -58,11 +53,11 @@ class EmbeddingImageDataset(Dataset):
         self.animal_int_labels = [x for x in range(len(self.labels))]
         self.class_to_idx = dict(zip(self.labels, self.animal_int_labels))
         # Set the image resize operation
-        self.transform = transforms.Resize((224,224))
+        self.transform = transforms.Resize((224, 224))
 
     def __len__(self):
         return len(self.selected_imgs)
-    
+
     def __getitem__(self, idx):
         # Get the object name to be downloaded
         img_name = self.selected_imgs[idx]
@@ -82,15 +77,17 @@ class EmbeddingImageDataset(Dataset):
         image = self.transform(image)
         return image, label, img_name
 
+
 class LocalImageDataset(Dataset):
     """A custom dataset for the locally saved images to be used in retraining"""
+
     def __init__(self, local_img_path, animal_id_map):
         # Get the full file paths of all local images for the re-training
-        self.imgs = glob.glob(local_img_path + '/*/*)
+        self.imgs = glob.glob(local_img_path + '/*/*')
         # Set the mapping of their string labels to integers based upon prior S3 images
         self.class_to_idx = animal_id_map
-        self.transform = transforms.Resize((224,224))
-    
+        self.transform = transforms.Resize((224, 224))
+
     def __len__(self):
         return len(self.imgs)
 
@@ -108,6 +105,7 @@ class LocalImageDataset(Dataset):
 
 class SimCLRModel(pl.LightningModule):
     """A version of the SimCLR model for embedding re-training"""
+
     def __init__(self, backbone, projection_head):
         super().__init__()
 
@@ -117,12 +115,12 @@ class SimCLRModel(pl.LightningModule):
 
         # create our loss with the optional memory bank
         self.criterion = NTXentLoss()
-    
+
     def forward(self, x):
         h = self.backbone(x).flatten(start_dim=1)
         z = self.projection_head(h)
         return z
-    
+
     def training_step(self, batch, batch_idx):
         (x0, x1), _, _ = batch
         z0 = self.forward(x0)
@@ -131,7 +129,7 @@ class SimCLRModel(pl.LightningModule):
         loss = self.criterion(z0, z1)
         self.log('train_loss', loss, on_step=True, on_epoch=True, logger=True)
         return loss
-        
+
     def configure_optimizers(self):
         optim = torch.optim.SGD(
             self.parameters(),
@@ -154,7 +152,7 @@ def main(uploaded_images, s3_resource, s3_bucket):
     Returns:
     updates the SimCLR model backbone for feature extraction and projection head
     """
-    
+
     # Get the number of old training data images to collect from S3
     num2sample = embedding_num_sample(uploaded_images)
 
@@ -170,11 +168,11 @@ def main(uploaded_images, s3_resource, s3_bucket):
     # Use the lightly SimCLR collate function to create the augmented transforms
     collate_fn = lightly.data.SimCLRCollateFunction(
         input_size=224,
-        )
+    )
     # Use the same batch size as the model was initially trained with
-    batch_size=128
+    batch_size = 128
     num_workers = 2
-    
+
     # Create the dataloaders to train the embeddings and the classifier
     dataloader_train_simclr = DataLoader(
         train_ds,
@@ -205,10 +203,10 @@ def main(uploaded_images, s3_resource, s3_bucket):
 
     # Define the pytorch trainer and allow for early stopping
     stop_callback = EarlyStopping(
-        monitor='train_loss', patience=3, verbose=True,mode='min')
+        monitor='train_loss', patience=3, verbose=True, mode='min')
     trainer = Trainer(max_epochs=100, gpus=gpus, callbacks=[stop_callback], logger=logger)
     trainer.fit(simclrmodel, dataloader_train_simclr)
-    
+
     # Save the retrained model backbone and projection head
     pretrained_backbone = simclrmodel.backbone
     backbone_state_dict = {

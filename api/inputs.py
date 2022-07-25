@@ -43,8 +43,8 @@ def read_images(file_names: List[str]) -> List[InputImage]:
         images.append(InputImage(
             file_name=file_name,
             original_image=pil_image,
-            original_height=width,
-            original_width=height,
+            original_height=height,
+            original_width=width,
             resized_image=pil_image.resize((640, 640))
         ))
     return images
