@@ -50,6 +50,13 @@ def retrain_classifier(session_id: str, logger: Logger) -> None:
         logger.info(message)
         log_event(RetrainEventLog(session_id=session_id, created_at=time.time(), message=message))
 
+    def __should_abort() -> bool:
+        job = retrain_job.read_job(session_id)
+        if job['status'] == 'aborted':
+            __log_event('Retraining aborted!')
+            return True
+        return False
+
     truncate_job_logs(session_id)
     __log_event(f'Started retraining for session {session_id}.')
 
@@ -65,11 +72,19 @@ def retrain_classifier(session_id: str, logger: Logger) -> None:
         __log_event('Retraining skipped since there are no new annotations for training.')
         return
 
-    __log_event(f"Retraining with {len(new_annotations)} new annotation{'s' if len(new_annotations) == 1 else ''}.")
+    __log_event(f"Retraining with {len(new_annotations)} new annotation{'s' if len(new_annotations) != 1 else ''}.")
 
     backbone, device = load_backbone()
-    for species, annotations in __group_annotations_by_species(new_annotations).items():
-        __log_event(f'Loading data for {species}.')
+
+    grouped_annotations = __group_annotations_by_species(new_annotations)
+    for species in grouped_annotations.keys():
+        __log_event(f'Found new training data for the {species} classifier.')
+
+    for species, annotations in grouped_annotations.items():
+        if __should_abort():
+            return
+
+        __log_event(f'Loading training data for the {species} classifier.')
         load_data_start_time = datetime.now()
         train_dataset = LocalTrainDataset(species, new_annotations)
         train_dataloader = DataLoader(
@@ -80,16 +95,19 @@ def retrain_classifier(session_id: str, logger: Logger) -> None:
             drop_last=True
         )
         train_embeddings, train_labels = generate_embeddings(backbone, train_dataloader)
-        __log_event(f'Loaded {len(train_embeddings)} embeddings after {datetime.now() - load_data_start_time}.')
+        __log_event(
+            f'Loaded {len(train_embeddings)} embeddings for {species} after {datetime.now() - load_data_start_time}.')
 
-        __log_event(f'Retraining for {species} classifier started.')
+        if __should_abort():
+            return
+        __log_event(f'Started retraining for the {species} classifier.')
         retrain_start_time = datetime.now()
         retrain_classifier_for_species(
             species=species,
             train_embeddings=train_embeddings,
             train_labels=train_labels
         )
-        __log_event(f'Retraining of {species} classifier completed after {datetime.now() - retrain_start_time}.')
+        __log_event(f'Completed retraining for the {species} classifier after {datetime.now() - retrain_start_time}.')
         logger.info(f'Model saved as {species.model_location()}')
 
         with open(species.labels_location(), 'w') as f:
@@ -97,7 +115,7 @@ def retrain_classifier(session_id: str, logger: Logger) -> None:
 
     job['status'] = 'completed'
     retrain_job.save_job(job)
-    __log_event(f'Retraining for session {session_id} completed.')
+    __log_event(f'Completed all retraining tasks for session {session_id}.')
 
 
 def __group_annotations_by_species(annotations: List[Annotation]) -> Dict[Species, List[Annotation]]:

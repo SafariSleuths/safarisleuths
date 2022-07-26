@@ -1,16 +1,19 @@
 import {
   Box,
   Button,
-  List,
-  ListItem,
+  ButtonGroup,
+  ImageList,
+  ImageListItem,
+  ImageListItemBar,
   Stack,
   Table,
   TableBody,
   TableCell,
   TableRow,
 } from "@mui/material";
-import React from "react";
+import React, { useState } from "react";
 import { Annotation } from "./Predictions";
+import { ImageModal } from "./ImageModal";
 
 interface RetrainJob {
   session_id: string;
@@ -32,13 +35,9 @@ export function ViewRetraining(props: { sessionID: string }) {
     []
   );
 
-  const [retrainAnnotations, setRetrainAnnotations] = React.useState<
-    Array<Annotation>
-  >([]);
-
   const firstUpdate = React.useRef(true);
   React.useEffect(() => {
-    if (firstUpdate.current) {
+    if (firstUpdate.current || retrainJob === undefined) {
       fetchRetrainJob(props.sessionID).then((job) => setRetrainJob(job));
       fetchRetrainLogs(props.sessionID).then((logs) => setRetrainLogs(logs));
       firstUpdate.current = false;
@@ -54,13 +53,111 @@ export function ViewRetraining(props: { sessionID: string }) {
   });
 
   return (
-    <Box>
-      <Button onClick={() => startRetraining(props.sessionID)}>
+    <Stack spacing={2}>
+      <p>
+        Retrain the individual animal classifiers using images reviewed in the
+        Prediction Results tab.
+      </p>
+      <RetrainingButtons
+        sessionID={props.sessionID}
+        job={retrainJob}
+        setJob={setRetrainJob}
+        setLogs={setRetrainLogs}
+      />
+      <ViewRetrainingStatus job={retrainJob} />
+      <ViewRetrainingLogs logs={retrainLogs} />
+      <ViewRetrainAnnotations sessionID={props.sessionID} />
+    </Stack>
+  );
+}
+
+function RetrainingButtons(props: {
+  sessionID: string;
+  job: RetrainJob | undefined;
+  setJob: (v: RetrainJob | undefined) => void;
+  setLogs: (v: Array<RetrainEventLog>) => void;
+}) {
+  const canStart =
+    props.job?.status === "completed" ||
+    props.job?.status === "not started" ||
+    props.job?.status === "aborted";
+
+  const canAbort = !canStart;
+  const canClear = canStart;
+
+  return (
+    <ButtonGroup>
+      <Button
+        disabled={!canStart}
+        onClick={() =>
+          startRetraining(props.sessionID).then(() => {
+            props.setJob(undefined);
+            props.setLogs([]);
+          })
+        }
+      >
         Start Retraining
       </Button>
-      <ViewRetrainAnnotations sessionID={props.sessionID} />
-      <RetrainingLogs logs={retrainLogs} />
+      <Button
+        disabled={!canAbort}
+        onClick={() => abortRetraining(props.sessionID)}
+      >
+        Abort Retraining
+      </Button>
+      <Button
+        disabled={!canClear}
+        onClick={() =>
+          clearRetraining(props.sessionID).then(() => {
+            props.setJob(undefined);
+            props.setLogs([]);
+          })
+        }
+      >
+        Clear Status
+      </Button>
+    </ButtonGroup>
+  );
+}
+
+function ViewRetrainingStatus(props: { job: RetrainJob | undefined }) {
+  if (props.job === undefined) {
+    return <Box />;
+  }
+  return (
+    <Box>
+      <h3>Retrain Status: {props.job.status.toUpperCase()}</h3>
     </Box>
+  );
+}
+
+function ViewRetrainingLogs(props: { logs: Array<RetrainEventLog> }) {
+  let content = (
+    <Table size={"small"}>
+      <TableBody>
+        {props.logs.map((log, i) => (
+          <TableRow key={i}>
+            <TableCell align="left">
+              {new Date(log.created_at * 1000).toLocaleString()}
+            </TableCell>
+            <TableCell align="left">{log.message}</TableCell>
+          </TableRow>
+        ))}
+      </TableBody>
+    </Table>
+  );
+
+  if (props.logs.length === 0) {
+    content = (
+      <Box>
+        <pre>Nothing here 🤷</pre>
+      </Box>
+    );
+  }
+  return (
+    <Stack>
+      <h3>Retraining Logs:</h3>
+      {content}
+    </Stack>
   );
 }
 
@@ -79,38 +176,72 @@ function ViewRetrainAnnotations(props: { sessionID: string }) {
     }
   });
 
+  if (annotations == undefined) {
+    return (
+      <Box>
+        No images can be used for retraining. Please review images in the
+        predictions tab.
+      </Box>
+    );
+  }
+
   return (
     <Box>
-      <List>
-        {annotations?.map((annotation, i) => (
-          <ListItem key={i}>{annotation.cropped_file_name}</ListItem>
-        ))}
-      </List>
+      <h3>Images included in retraining</h3>
+      <ImageList cols={5} gap={6}>
+        {annotations
+          .map((annotation) => ({
+            file_name: annotation.cropped_file_name || "",
+            name: annotation.predicted_name || "",
+            species: annotation.predicted_species || "",
+          }))
+          .filter((v) => v.file_name != "")
+          .filter((v) => v.name != "")
+          .filter((v) => v.species != "")
+          .map((v, i) => (
+            <RetrainingImageItem
+              key={i}
+              cropped_file_name={v.file_name}
+              predicted_name={v.name}
+              predicted_species={v.species.replace("_", " ")}
+            />
+          ))}
+      </ImageList>
     </Box>
   );
 }
 
-function RetrainingLogs(props: { logs: Array<RetrainEventLog> }) {
-  if (props.logs.length == 0) {
-    return <Box />;
-  }
-
+function RetrainingImageItem(props: {
+  cropped_file_name: string;
+  predicted_name: string;
+  predicted_species: string;
+}) {
+  const [openImageModal, setOpenImageModal] = useState(false);
+  const title = (
+    <Box>
+      Name: {props.predicted_name}
+      <br />
+      Species: {props.predicted_species}
+    </Box>
+  );
   return (
-    <Stack>
-      <h2>Retraining Logs</h2>
-      <Table size={"small"}>
-        <TableBody>
-          {props.logs.map((log, i) => (
-            <TableRow key={i}>
-              <TableCell align="left">
-                {new Date(log.created_at * 1000).toLocaleString()}
-              </TableCell>
-              <TableCell align="left">{log.message}</TableCell>
-            </TableRow>
-          ))}
-        </TableBody>
-      </Table>
-    </Stack>
+    <ImageListItem>
+      <img
+        style={{ height: 300, width: 300 }}
+        src={props.cropped_file_name}
+        srcSet={props.cropped_file_name}
+        alt={props.cropped_file_name}
+        loading="lazy"
+        onClick={() => setOpenImageModal(true)}
+      />
+      <ImageModal
+        src={props.cropped_file_name}
+        alt={props.cropped_file_name}
+        open={openImageModal}
+        setOpen={setOpenImageModal}
+      />
+      <ImageListItemBar position={"below"} subtitle={title} />
+    </ImageListItem>
   );
 }
 
@@ -155,6 +286,30 @@ interface GetRetrainResponse {
 function startRetraining(sessionID: string): Promise<string> {
   return fetch("/api/v1/retrain", {
     method: "GET",
+    headers: {
+      Accept: "application/json",
+      SessionID: sessionID,
+    },
+  })
+    .then((resp) => resp.json())
+    .then((data: GetRetrainResponse) => data.status);
+}
+
+function abortRetraining(sessionID: string): Promise<string> {
+  return fetch("/api/v1/abort_retrain_job", {
+    method: "GET",
+    headers: {
+      Accept: "application/json",
+      SessionID: sessionID,
+    },
+  })
+    .then((resp) => resp.json())
+    .then((data: GetRetrainResponse) => data.status);
+}
+
+function clearRetraining(sessionID: string): Promise<string> {
+  return fetch("/api/v1/retrain_job", {
+    method: "DELETE",
     headers: {
       Accept: "application/json",
       SessionID: sessionID,

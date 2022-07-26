@@ -1,6 +1,5 @@
 import json
 import logging
-import os
 from typing import List, TypedDict
 import re
 
@@ -12,7 +11,8 @@ from werkzeug.exceptions import HTTPException
 import api.sessions as sessions
 import api.inputs as inputs
 from api import retrain_classifier, retrain_job
-from api.annotations import Annotation, save_annotations_for_session, fetch_annotations_for_session
+from api.annotations import Annotation, save_annotations_for_session, fetch_annotations_for_session, \
+    truncate_annotations_for_session
 from api.predict_bounding_boxes import crop_and_upload, annotate_and_upload, BoundingBox, \
     predict_bounding_boxes_for_session
 from api.predict_individual import predict_individuals_from_yolov_predictions
@@ -127,6 +127,7 @@ UNDETECTED = 'undetected'
 @app.get('/api/v1/predictions')
 def get_predictions() -> GetPredictionsResponse:
     session_id = sessions.must_get_session_id()
+    truncate_annotations_for_session(session_id)
 
     yolov_predictions = predict_bounding_boxes_for_session(session_id)
     individual_predictions = predict_individuals_from_yolov_predictions(yolov_predictions)

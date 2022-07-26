@@ -39,6 +39,7 @@ import {
   readAnnotationsCache,
   writeAnnotationsCache,
 } from "./Predictions";
+import { ImageModal } from "./ImageModal";
 
 export function ViewPredictions(props: { sessionID: string }) {
   const [annotations, setAnnotations] = useState<Array<Annotation> | undefined>(
@@ -334,8 +335,9 @@ function AnnotationImage(props: {
   }
 
   return (
-    <ImageListItem>
+    <ImageListItem sx={{ alignItems: "center" }}>
       <img
+        style={{ height: 500, width: 520 }}
         src={src}
         srcSet={src}
         alt={alt}
@@ -371,33 +373,6 @@ function AnnotationImage(props: {
         setAnnotation={props.setAnnotation}
       />
     </ImageListItem>
-  );
-}
-
-function ImageModal(props: {
-  src: string;
-  alt: string;
-  open: boolean;
-  setOpen: (v: boolean) => void;
-}) {
-  return (
-    <Modal open={props.open} onClose={() => props.setOpen(false)}>
-      <Box
-        display="flex"
-        justifyContent="center"
-        alignItems="center"
-        minHeight="100vh"
-      >
-        <img
-          width={"75%"}
-          height={"auto"}
-          src={props.src}
-          srcSet={props.src}
-          alt={props.alt}
-          loading="lazy"
-        />
-      </Box>
-    </Modal>
   );
 }
 

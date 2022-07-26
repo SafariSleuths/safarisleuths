@@ -19,20 +19,16 @@ class Annotation(TypedDict):
     ignored: bool
 
 
+def truncate_annotations_for_session(session_id: str) -> None:
+    redis_client.delete(f'{REDIS_KEY}:sessions:{session_id}')
+
+
 def save_annotations_for_session(session_id: str, annotations: List[Annotation]) -> None:
     __save_annotations(f'{REDIS_KEY}:sessions:{session_id}', annotations)
 
 
 def fetch_annotations_for_session(session_id: str) -> List[Annotation]:
     return __fetch_annotations(f'{REDIS_KEY}:sessions:{session_id}')
-
-
-def save_annotations_for_training(annotations: List[Annotation]) -> None:
-    __save_annotations(f'{REDIS_KEY}:training', annotations)
-
-
-def fetch_annotations_for_training() -> List[Annotation]:
-    return __fetch_annotations(f'{REDIS_KEY}:training')
 
 
 def __save_annotations(key: str, annotations: List[Annotation]) -> None:

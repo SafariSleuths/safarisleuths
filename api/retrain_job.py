@@ -5,6 +5,7 @@ from flask import Blueprint
 
 from api import sessions
 from api.redis_client import redis_client
+from api.status_response import StatusResponse
 
 JOBS_REDIS_KEY = 'retrain_jobs'
 LOGS_REDIS_KEY = 'retrain_logs'
@@ -38,6 +39,23 @@ def get_retrain_job() -> GetRetrainJobResponse:
         status='not started'
     )
     return {'status': 'ok', 'job': job}
+
+
+@flask_blueprint.delete('/api/v1/retrain_job')
+def delete_retrain_job() -> StatusResponse:
+    session_id = sessions.must_get_session_id()
+    delete_job(session_id)
+    truncate_job_logs(session_id)
+    return {'status': 'ok'}
+
+
+@flask_blueprint.get('/api/v1/abort_retrain_job')
+def abort_retrain_job() -> StatusResponse:
+    session_id = sessions.must_get_session_id()
+    job = read_job(session_id)
+    job['status'] = 'aborted'
+    save_job(job)
+    return {'status': 'ok'}
 
 
 class GetRetrainLogsResponse(TypedDict):
@@ -76,3 +94,7 @@ def read_job(job_id: str) -> Optional[RetrainJob]:
 
 def save_job(job: RetrainJob) -> None:
     redis_client.hset(JOBS_REDIS_KEY, job['session_id'], json.dumps(job, default=str))
+
+
+def delete_job(job_id: str) -> None:
+    redis_client.hdel(JOBS_REDIS_KEY, job_id)

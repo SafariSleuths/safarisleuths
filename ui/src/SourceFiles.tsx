@@ -6,9 +6,11 @@ import {
   FormControl,
   ImageList,
   ImageListItem,
+  ImageListItemBar,
   Stack,
 } from "@mui/material";
 import { SessionSelect } from "./SessionSelect";
+import { ImageModal } from "./ImageModal";
 
 export function SourceFiles(props: {
   sessionID: string;
@@ -43,21 +45,17 @@ export function SourceFiles(props: {
       />
 
       <Stack alignItems={"center"}>
-        <ImageList cols={5} gap={12}>
+        <ImageList cols={4} gap={12}>
           {(uploadedFiles || []).map((src, i) => (
-            <ImageListItem key={i}>
-              <img src={src} srcSet={src} alt={src} loading="lazy" />
-              <Button
-                fullWidth
-                onClick={() =>
-                  deleteFiles(props.sessionID, [src]).then(() => {
-                    setUploadedFiles(uploadedFiles?.filter((n) => n != src));
-                  })
-                }
-              >
-                Delete
-              </Button>
-            </ImageListItem>
+            <UploadedImageItem
+              key={i}
+              src={src}
+              onClickDelete={() =>
+                deleteFiles(props.sessionID, [src]).then(() => {
+                  setUploadedFiles(uploadedFiles?.filter((n) => n != src));
+                })
+              }
+            />
           ))}
         </ImageList>
       </Stack>
@@ -108,6 +106,33 @@ function UploadForm(props: {
         <CircularProgress />{" "}
       </Box>
     </Box>
+  );
+}
+
+function UploadedImageItem(props: { src: string; onClickDelete: () => void }) {
+  const [openImageModal, setOpenImageModal] = useState(false);
+  const title = `File name: ${props.src.split("/").reverse()[0]}`;
+  return (
+    <ImageListItem>
+      <img
+        style={{ height: 350, width: 350 }}
+        src={props.src}
+        srcSet={props.src}
+        alt={title}
+        loading="lazy"
+        onClick={() => setOpenImageModal(true)}
+      />
+      <ImageModal
+        src={props.src}
+        alt={title}
+        open={openImageModal}
+        setOpen={setOpenImageModal}
+      />
+      <ImageListItemBar position={"below"} subtitle={title} />
+      <Button fullWidth onClick={props.onClickDelete}>
+        Delete
+      </Button>
+    </ImageListItem>
   );
 }
 
