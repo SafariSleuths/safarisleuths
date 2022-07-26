@@ -11,13 +11,14 @@ from werkzeug.exceptions import HTTPException
 
 import api.sessions as sessions
 import api.inputs as inputs
-from api.retrain_classifier import retrain_classifier
+from api import retrain_classifier
 from api.annotations import Annotation, save_annotations_for_session, fetch_annotations_for_session
 from api.predict_bounding_boxes import crop_and_upload, annotate_and_upload, BoundingBox, \
     predict_bounding_boxes_for_session
 from api.predict_individual import predict_individuals_from_yolov_predictions
 from api.s3_client import s3_bucket
 from api.species import Species
+from api.status_response import StatusResponse
 
 logger = logging.getLogger(__name__)
 
@@ -25,8 +26,11 @@ app = flask.Flask(__name__, static_url_path='', static_folder='ui/build')
 
 logging.basicConfig(
     format='%(asctime)s,%(msecs)d %(levelname)-8s [%(pathname)s:%(lineno)d] %(message)s',
-    datefmt='%Y-%m-%d:%H:%M:%S'
+    datefmt='%Y-%m-%d:%H:%M:%S',
+    level=logging.INFO
 )
+
+app.register_blueprint(retrain_classifier.flask_blueprint)
 
 
 @app.errorhandler(HTTPException)
@@ -40,26 +44,6 @@ def handle_exception(e):
     })
     response.content_type = 'application/json'
     return response
-
-
-class StatusResponse(TypedDict):
-    status: str
-
-
-def must_get_session_id() -> str:
-    session_id = request.args.get('session_id')
-    if session_id is not None:
-        if not sessions.session_exists(session_id):
-            flask.abort(400, f'Session ID `{session_id}` not found.')
-        if sessions.session_exists(session_id):
-            return session_id
-
-    session_id = request.headers.get('SessionID', '')
-    if session_id == '':
-        flask.abort(400, 'Header `SessionID` required.')
-    if not sessions.session_exists(session_id):
-        flask.abort(400, f'Session ID `{session_id}` not found.')
-    return session_id
 
 
 class GetSessionsResponse(TypedDict):
@@ -106,13 +90,13 @@ class GetImagesResponse(TypedDict):
 
 @app.get('/api/v1/images')
 def get_images() -> GetImagesResponse:
-    session_id = must_get_session_id()
+    session_id = sessions.must_get_session_id()
     return {'status': 'ok', 'images': [f'/{i}' for i in inputs.image_paths_for_session(session_id)]}
 
 
 @app.post('/api/v1/images')
 def post_images() -> StatusResponse:
-    session_id = must_get_session_id()
+    session_id = sessions.must_get_session_id()
     inputs.save_images_for_session(session_id, request.files)
     return {'status': 'ok'}
 
@@ -127,7 +111,7 @@ UNDETECTED = 'undetected'
 
 @app.get('/api/v1/predictions')
 def get_predictions() -> GetPredictionsResponse:
-    session_id = must_get_session_id()
+    session_id = sessions.must_get_session_id()
 
     yolov_predictions = predict_bounding_boxes_for_session(session_id)
     individual_predictions = predict_individuals_from_yolov_predictions(yolov_predictions)
@@ -161,13 +145,13 @@ class GetAnnotationsResponse(TypedDict):
 
 @app.get('/api/v1/annotations')
 def get_annotations() -> GetAnnotationsResponse:
-    session_id = must_get_session_id()
+    session_id = sessions.must_get_session_id()
     return {'status': 'ok', 'annotations': fetch_annotations_for_session(session_id)}
 
 
 @app.post('/api/v1/annotations')
 def post_annotations() -> StatusResponse:
-    session_id = must_get_session_id()
+    session_id = sessions.must_get_session_id()
     annotations: List[Annotation] = request.get_json()
     save_annotations_for_session(session_id, annotations)
     for annotation in annotations:
@@ -180,13 +164,6 @@ def post_annotations() -> StatusResponse:
         )
         crop_and_upload(image.copy(), annotation['cropped_file_name'], bbox)
         annotate_and_upload(image.copy(), annotation['annotated_file_name'], bbox)
-    return {'status': 'ok'}
-
-
-@app.get('/api/v1/retrain')
-def get_retrain() -> StatusResponse:
-    session_id = must_get_session_id()
-    retrain_classifier(fetch_annotations_for_session(session_id))
     return {'status': 'ok'}
 
 
