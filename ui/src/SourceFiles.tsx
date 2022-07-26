@@ -48,10 +48,9 @@ export function SourceFiles(props: {
             <ImageListItem key={i}>
               <img src={src} srcSet={src} alt={src} loading="lazy" />
               <Button
-                disabled
                 fullWidth
                 onClick={() =>
-                  deleteFiles([src]).then(() => {
+                  deleteFiles(props.sessionID, [src]).then(() => {
                     setUploadedFiles(uploadedFiles?.filter((n) => n != src));
                   })
                 }
@@ -112,17 +111,30 @@ function UploadForm(props: {
   );
 }
 
-function deleteFiles(fileNames: Array<string>): Promise<Array<string>> {
-  return fetch("/api/v1/delete_files", {
-    method: "POST",
+interface DeleteImagesResponse {
+  status: string;
+}
+
+function deleteFiles(
+  sessionID: string,
+  images: Array<string>
+): Promise<string> {
+  return fetch("/api/v1/images", {
+    method: "DELETE",
     headers: {
       Accept: "application/json",
       "Content-Type": "application/json",
+      SessionID: sessionID,
     },
-    body: JSON.stringify({ files: fileNames }),
+    body: JSON.stringify({ images: images }),
   })
     .then((resp) => resp.json())
-    .then((data) => data["deleted"] as Array<string>);
+    .then((data: DeleteImagesResponse) => data.status);
+}
+
+interface PostImagesResponse {
+  status: string;
+  uploaded: Array<string>;
 }
 
 function uploadImages(
@@ -143,7 +155,7 @@ function uploadImages(
     body: data,
   })
     .then((resp) => resp.json())
-    .then((data) => data["images"] as Array<string>);
+    .then((data: PostImagesResponse) => data.uploaded);
 }
 
 interface ImagesResponse {

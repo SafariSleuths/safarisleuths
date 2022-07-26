@@ -17,7 +17,7 @@ class InputImage(NamedTuple):
     resized_image: PIL.Image.Image
 
 
-def save_images_for_session(session_id: str, files: ImmutableMultiDict[str, FileStorage]) -> None:
+def save_images_for_session(session_id: str, files: ImmutableMultiDict[str, FileStorage]) -> List[str]:
     os.makedirs(f'{INPUTS_PATH}/{session_id}', exist_ok=True)
     uploaded = []
     for file_name in files:
@@ -25,13 +25,28 @@ def save_images_for_session(session_id: str, files: ImmutableMultiDict[str, File
         files[file_name].save(dest)
         s3_bucket.upload_file(dest, dest)
         uploaded.append(dest)
+    return uploaded
+
+
+def delete_images_for_session(session_id: str, file_names: List[str]) -> None:
+    real_file_names = []
+    for file_name in file_names:
+        real_file_names.append(f'{INPUTS_PATH}/{session_id}/{os.path.basename(file_name)}')
+
+    for file_name in real_file_names:
+        try:
+            os.remove(file_name)
+        except FileNotFoundError:
+            pass
+
+    s3_bucket.delete_objects(Delete={'Objects': [{'Key': key} for key in real_file_names]})
 
 
 def read_images_for_session(session_id: str) -> List[InputImage]:
-    return read_images(image_paths_for_session(session_id))
+    return read_images(list_image_paths_for_session(session_id))
 
 
-def image_paths_for_session(session_id: str) -> List[str]:
+def list_image_paths_for_session(session_id: str) -> List[str]:
     return [o.key for o in s3_bucket.objects.filter(Prefix=f'{INPUTS_PATH}/{session_id}/')]
 
 

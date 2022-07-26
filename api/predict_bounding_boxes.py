@@ -54,6 +54,8 @@ def predict_bounding_boxes_for_session(session_id: str) -> List[YolovPrediction]
     logger.info(f'Uploading results.')
     start_time = datetime.now()
     for prediction in yolov_predictions:
+        if prediction.predicted_species is None:
+            continue
         image = PIL.Image.open(prediction.file_name)
         crop_and_upload(
             image=image.copy(),

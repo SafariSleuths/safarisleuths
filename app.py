@@ -20,16 +20,13 @@ from api.s3_client import s3_bucket
 from api.species import Species
 from api.status_response import StatusResponse
 
-logger = logging.getLogger(__name__)
-
-app = flask.Flask(__name__, static_url_path='', static_folder='ui/build')
-
 logging.basicConfig(
-    format='%(asctime)s,%(msecs)d %(levelname)-8s [%(pathname)s:%(lineno)d] %(message)s',
+    format='%(asctime)s.%(msecs)d %(pathname)s:%(lineno)d [%(levelname)s] %(message)s',
     datefmt='%Y-%m-%d:%H:%M:%S',
     level=logging.INFO
 )
 
+app = flask.Flask(__name__, static_url_path='', static_folder='ui/build')
 app.register_blueprint(retrain_classifier.flask_blueprint)
 app.register_blueprint(retrain_job.flask_blueprint)
 
@@ -92,13 +89,30 @@ class GetImagesResponse(TypedDict):
 @app.get('/api/v1/images')
 def get_images() -> GetImagesResponse:
     session_id = sessions.must_get_session_id()
-    return {'status': 'ok', 'images': [f'/{i}' for i in inputs.image_paths_for_session(session_id)]}
+    return {'status': 'ok', 'images': [f'/{i}' for i in inputs.list_image_paths_for_session(session_id)]}
+
+
+class PostImagesResponse(TypedDict):
+    status: str
+    uploaded: List[str]
 
 
 @app.post('/api/v1/images')
-def post_images() -> StatusResponse:
+def post_images() -> PostImagesResponse:
     session_id = sessions.must_get_session_id()
-    inputs.save_images_for_session(session_id, request.files)
+    uploaded = inputs.save_images_for_session(session_id, request.files)
+    return {'status': 'ok', 'uploaded': uploaded}
+
+
+class DeleteImagesRequest(TypedDict):
+    images: List[str]
+
+
+@app.delete('/api/v1/images')
+def delete_images() -> StatusResponse:
+    session_id = sessions.must_get_session_id()
+    data: DeleteImagesRequest = request.get_json()
+    inputs.delete_images_for_session(session_id, data['images'])
     return {'status': 'ok'}
 
 
@@ -117,14 +131,14 @@ def get_predictions() -> GetPredictionsResponse:
     yolov_predictions = predict_bounding_boxes_for_session(session_id)
     individual_predictions = predict_individuals_from_yolov_predictions(yolov_predictions)
 
-    yolov_predictions.sort(key=lambda p: p.cropped_file_name)
-    individual_predictions.sort(key=lambda p: p.cropped_file_name)
+    yolov_predictions.sort(key=lambda p: p.cropped_file_name or '')
+    individual_predictions.sort(key=lambda p: p.cropped_file_name or '')
     annotations = []
     for yolov_prediction, individual_prediction in zip(
             yolov_predictions, individual_predictions
     ):
         annotations.append(Annotation(
-            id=os.path.basename(yolov_prediction.cropped_file_name),
+            id=yolov_prediction.id,
             file_name=yolov_prediction.file_name,
             annotated_file_name=yolov_prediction.annotated_file_name,
             cropped_file_name=yolov_prediction.cropped_file_name,
