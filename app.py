@@ -1,3 +1,4 @@
+import logging
 import os
 from typing import List, TypedDict
 import re
@@ -7,13 +8,19 @@ import flask
 from flask import request, send_from_directory
 import api.sessions as sessions
 import api.inputs as inputs
-from retrain_classifier import retrain_classifier
+from api.retrain_classifier import retrain_classifier
 from api.annotations import Annotation, save_annotations_for_session, fetch_annotations_for_session
-from api.redis_client import redis_client
-from predict_bounding_boxes import predict_bounding_boxes, crop_and_upload, annotate_and_upload, BoundingBox
-from predict_individual import predict_individuals_from_yolov_predictions
+from api.predict_bounding_boxes import predict_bounding_boxes, crop_and_upload, annotate_and_upload, BoundingBox
+from api.predict_individual import predict_individuals_from_yolov_predictions
+
+logger = logging.getLogger(__name__)
 
 app = flask.Flask(__name__, static_url_path='', static_folder='ui/build')
+
+logging.basicConfig(
+    format='%(asctime)s,%(msecs)d %(levelname)-8s [%(pathname)s:%(lineno)d] %(message)s',
+    datefmt='%Y-%m-%d:%H:%M:%S'
+)
 
 
 class StatusResponse(TypedDict):
@@ -113,7 +120,7 @@ def get_predictions() -> GetPredictionsResponse:
             annotated_file_name=yolov_prediction.annotated_file_name,
             cropped_file_name=yolov_prediction.cropped_file_name,
             bbox=yolov_prediction.bbox or [0, 0, 0, 0],
-            bbox_confidence=yolov_prediction.bbox_confidence or 0,
+            species_confidence=yolov_prediction.confidence or 0,
             predicted_species=yolov_prediction.predicted_species or UNDETECTED,
             predicted_name=individual_prediction.individual_name or UNDETECTED,
             accepted=False,
@@ -144,7 +151,7 @@ def post_annotations() -> StatusResponse:
 def get_retrain_classifier():
     session_id = must_get_session_id()
     annotations = fetch_annotations_for_session(session_id)
-    retrain_classifier(annotations)
+    #retrain_classifier(annotations)
 
 
 @app.get("/")

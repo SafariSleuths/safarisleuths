@@ -28,9 +28,7 @@ class Species(Enum):
             return 'great_zebra_giraffe/individual_recognition/train/'
 
     def model_location(self) -> str:
-        if self == Species.HYENA:
-            return 'models/hyena_knn_last.joblib'
-        elif self == Species.LEOPARD:
-            return 'models/leopard_knn_last.joblib'
-        elif self == Species.GIRAFFE:
-            return 'models/giraffe_knn_last.joblib'
+        return f'models/{self}_knn.joblib'
+
+    def labels_location(self) -> str:
+        return f'models/{self}_labels.json'

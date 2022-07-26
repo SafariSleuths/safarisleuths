@@ -12,7 +12,7 @@ class Annotation(TypedDict):
     annotated_file_name: Optional[str]
     cropped_file_name: Optional[str]
     bbox: Optional[List[float]]
-    bbox_confidence: float
+    species_confidence: float
     predicted_species: str
     predicted_name: str
     accepted: bool

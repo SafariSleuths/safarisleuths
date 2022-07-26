@@ -6,7 +6,7 @@ export interface Annotation {
   annotated_file_name: string | undefined;
   cropped_file_name: string | undefined;
   bbox: Array<number>;
-  bbox_confidence: number;
+  species_confidence: number;
   predicted_species: string;
   predicted_name: string;
   reviewed: boolean | undefined;
