@@ -12,6 +12,7 @@ import { getSessions, putSession, Session } from "./Session";
 export function SessionSelect(props: {
   sessionID: string;
   setSessionID: (v: string) => void;
+  setUploadedFiles: (v: Array<string> | undefined) => void;
 }) {
   const [sessions, setSessions] = useState<Array<Session> | undefined>(
     undefined
@@ -54,6 +55,7 @@ export function SessionSelect(props: {
               size={"small"}
               onChange={(e) => {
                 setNewSession(e.target.value);
+                props.setUploadedFiles(undefined);
                 if (e.target.value !== "") {
                   setCanSubmit(true);
                 }

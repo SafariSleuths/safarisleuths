@@ -1,5 +1,3 @@
-const Undetected = "undetected";
-
 export interface Annotation {
   id: number;
   file_name: string;
@@ -9,7 +7,7 @@ export interface Annotation {
   species_confidence: number;
   predicted_species: string;
   predicted_name: string;
-  reviewed: boolean | undefined;
+  accepted: boolean | undefined;
   ignored: boolean | undefined;
 }
 

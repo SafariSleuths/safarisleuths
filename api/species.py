@@ -1,7 +1,10 @@
 from __future__ import annotations
 
+import json
 from enum import Enum
-from typing import Optional
+from typing import Optional, List
+
+import joblib
 
 
 class Species(Enum):
@@ -32,3 +35,7 @@ class Species(Enum):
 
     def labels_location(self) -> str:
         return f'models/{self}_labels.json'
+
+    def read_labels(self) -> List[str]:
+        with open(self.labels_location()) as f:
+            return json.load(f)

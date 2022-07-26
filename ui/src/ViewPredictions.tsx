@@ -136,11 +136,11 @@ function fetchAndSortPredictions(
   fetchPredictions(sessionID).then((data) => {
     data.annotations.sort((a, b) => {
       switch (true) {
-        case a.predicted_name == b.predicted_name:
+        case a.predicted_name === b.predicted_name:
           return 0;
         case a.predicted_name !== undefined && b.predicted_name !== undefined:
           return a.predicted_name?.localeCompare(b.predicted_name || "") || 0;
-        case a.predicted_name == undefined:
+        case a.predicted_name === undefined:
           return 1;
         default:
           return -1;
@@ -212,7 +212,7 @@ function SummaryTable(props: {
       </TableHead>
       <TableBody>
         {Array.from(props.annotationsByName)
-          .filter(([name, _]) => name != Undetected)
+          .filter(([name, _]) => name !== Undetected)
           .map(([name, annotations], i) => (
             <TableRow key={i}>
               <TableCell>{i + 1}</TableCell>
@@ -237,13 +237,13 @@ function AnimalBreakdown(props: {
   setAnnotations: (v: Array<Annotation>) => void;
   subtitle: string;
 }) {
-  if (props.annotations.length == 0) {
+  if (props.annotations.length === 0) {
     return <Box />;
   }
 
-  const pendingReview = props.annotations.filter((a) => a.reviewed).length;
+  const pendingReview = props.annotations.filter((a) => a.accepted).length;
   let title = `Animal ID: ${props.name} (${pendingReview}/${props.annotations.length} reviewed)`;
-  if (props.name == Undetected) {
+  if (props.name === Undetected) {
     title = `None detected (${pendingReview}/${props.annotations.length} reviewed)`;
   }
 
@@ -278,10 +278,10 @@ function AnimalImageList(props: {
   props.annotations.sort((a, b) => {
     let a_score = 0;
     let b_score = 0;
-    if (a.reviewed) {
+    if (a.accepted) {
       a_score = 100;
     }
-    if (b.reviewed) {
+    if (b.accepted) {
       b_score = 100;
     }
     if (a.ignored) {
@@ -290,7 +290,7 @@ function AnimalImageList(props: {
     if (b.ignored) {
       b_score = 200;
     }
-    if (a_score == b_score) {
+    if (a_score === b_score) {
       return a.predicted_name.localeCompare(b.predicted_name);
     }
     return a_score - b_score;
@@ -325,7 +325,7 @@ function AnnotationImage(props: {
   const [openImageModal, setOpenImageModal] = useState(false);
 
   let subtitle = `Pending Review`;
-  if (props.annotation.reviewed) {
+  if (props.annotation.accepted) {
     subtitle = "✔ Reviewed";
   }
 
@@ -462,7 +462,7 @@ function AnnotationButtonsAndModal(props: {
           <Button
             size={"small"}
             onClick={() => {
-              updatedAnnotation.reviewed = true;
+              updatedAnnotation.accepted = true;
               updatedAnnotation.ignored = false;
               submitAnnotation();
             }}
@@ -512,7 +512,7 @@ function AnnotationButtonsAndModal(props: {
             color={"primary"}
             disabled={formError !== null}
             onClick={() => {
-              updatedAnnotation.reviewed = true;
+              updatedAnnotation.accepted = true;
               updatedAnnotation.ignored = false;
               submitAnnotation();
             }}

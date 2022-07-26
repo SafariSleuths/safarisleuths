@@ -34,6 +34,7 @@ export function SourceFiles(props: {
       <SessionSelect
         sessionID={props.sessionID}
         setSessionID={props.setSessionID}
+        setUploadedFiles={setUploadedFiles}
       />
       <UploadForm
         sessionID={props.sessionID}

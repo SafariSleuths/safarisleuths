@@ -1,11 +1,13 @@
 import logging
 import os.path
+from datetime import datetime
 from typing import NamedTuple, Optional, List, Tuple
 
 import PIL
 import torch
 from PIL import Image, ImageDraw
 
+from api import inputs
 from api.inputs import InputImage
 from api.s3_client import s3_bucket
 
@@ -13,11 +15,6 @@ logger = logging.getLogger(__name__)
 
 OUTPUTS_PATH = 'website-data/outputs'
 BOX_COLOR = (0, 0, 255)
-
-object_detection_model = torch.hub.load(
-    'ultralytics/yolov5', 'custom', 'models/frozen_backbone_coco_unlabeled_best.onnx',
-    autoshape=True, force_reload=True
-)
 
 
 class BoundingBox(NamedTuple):
@@ -37,12 +34,43 @@ class YolovPrediction(NamedTuple):
     cropped_file_name: Optional[str]
     bbox: Optional[BoundingBox]
     confidence: Optional[float]
-    bbox_label: Optional[int]
     predicted_species: Optional[str]
 
 
-def predict_bounding_boxes(input_image: InputImage, session_id: str) -> List[YolovPrediction]:
-    raw_results = object_detection_model(input_image.resized_image, size=640).pandas().xyxy[0]
+def predict_bounding_boxes_for_session(session_id: str) -> List[YolovPrediction]:
+    logger.info("Started bounding box prediction.")
+    start_time = datetime.now()
+
+    model = torch.hub.load(
+        'ultralytics/yolov5', 'custom', 'models/frozen_backbone_coco_unlabeled_best.onnx',
+        autoshape=True, force_reload=True
+    )
+
+    yolov_predictions: List[YolovPrediction] = []
+    for input_image in inputs.read_images_for_session(session_id):
+        yolov_predictions += predict_bounding_boxes(model, input_image, session_id)
+    logger.info(f'Bounding box predictions completed after {datetime.now() - start_time}.')
+
+    logger.info(f'Uploading results.')
+    start_time = datetime.now()
+    for prediction in yolov_predictions:
+        image = PIL.Image.open(prediction.file_name)
+        crop_and_upload(
+            image=image.copy(),
+            dest=prediction.cropped_file_name,
+            bbox=prediction.bbox
+        )
+        annotate_and_upload(
+            image=image.copy(),
+            dest=prediction.annotated_file_name,
+            bbox=prediction.bbox
+        )
+    logger.info(f'Results uploaded after {datetime.now() - start_time}.')
+    return yolov_predictions
+
+
+def predict_bounding_boxes(model, input_image: InputImage, session_id: str) -> List[YolovPrediction]:
+    raw_results = model(input_image.resized_image, size=640).pandas().xyxy[0]
     raw_results.reset_index()
 
     if len(raw_results) == 0:
@@ -54,7 +82,6 @@ def predict_bounding_boxes(input_image: InputImage, session_id: str) -> List[Yol
                 cropped_file_name=None,
                 bbox=None,
                 confidence=None,
-                bbox_label=None,
                 predicted_species=None
             )
         ]
@@ -63,34 +90,20 @@ def predict_bounding_boxes(input_image: InputImage, session_id: str) -> List[Yol
     for idx, prediction in raw_results.iterrows():
         species_name = prediction['name']
         output_file_name = f'{idx}_{os.path.basename(input_image.file_name)}'
-        annotated_file_name = f'{OUTPUTS_PATH}/{session_id}/annotated/{species_name}/{output_file_name}'
-        cropped_file_name = f'{OUTPUTS_PATH}/{session_id}/cropped/{species_name}/{output_file_name}'
-        bbox = yolov2coco(
-            xmin=prediction['xmin'],
-            xmax=prediction['xmax'],
-            ymin=prediction['ymin'],
-            ymax=prediction['ymax'],
-            original_width=input_image.original_width,
-            original_height=input_image.original_height
-        )
-        crop_and_upload(
-            image=input_image.original_image.copy(),
-            dest=cropped_file_name,
-            bbox=bbox
-        )
-        annotate_and_upload(
-            image=input_image.original_image.copy(),
-            dest=annotated_file_name,
-            bbox=bbox
-        )
         predictions.append(YolovPrediction(
             id=output_file_name.removesuffix('.jpg'),
             file_name=input_image.file_name,
-            annotated_file_name=annotated_file_name,
-            cropped_file_name=cropped_file_name,
-            bbox=bbox,
+            annotated_file_name=f'{OUTPUTS_PATH}/{session_id}/annotated/{species_name}/{output_file_name}',
+            cropped_file_name=f'{OUTPUTS_PATH}/{session_id}/cropped/{species_name}/{output_file_name}',
+            bbox=yolov2coco(
+                xmin=prediction['xmin'],
+                xmax=prediction['xmax'],
+                ymin=prediction['ymin'],
+                ymax=prediction['ymax'],
+                original_width=input_image.original_width,
+                original_height=input_image.original_height
+            ),
             confidence=prediction['confidence'],
-            bbox_label=prediction['class'],
             predicted_species=prediction['name']
         ))
 

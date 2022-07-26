@@ -1,3 +1,4 @@
+import json
 import logging
 import os
 from typing import List, TypedDict
@@ -6,12 +7,17 @@ import re
 import PIL.Image
 import flask
 from flask import request, send_from_directory
+from werkzeug.exceptions import HTTPException
+
 import api.sessions as sessions
 import api.inputs as inputs
 from api.retrain_classifier import retrain_classifier
 from api.annotations import Annotation, save_annotations_for_session, fetch_annotations_for_session
-from api.predict_bounding_boxes import predict_bounding_boxes, crop_and_upload, annotate_and_upload, BoundingBox
+from api.predict_bounding_boxes import crop_and_upload, annotate_and_upload, BoundingBox, \
+    predict_bounding_boxes_for_session
 from api.predict_individual import predict_individuals_from_yolov_predictions
+from api.s3_client import s3_bucket
+from api.species import Species
 
 logger = logging.getLogger(__name__)
 
@@ -23,11 +29,31 @@ logging.basicConfig(
 )
 
 
+@app.errorhandler(HTTPException)
+def handle_exception(e):
+    response = e.get_response()
+    response.data = json.dumps({
+        'status': 'failed',
+        'error_code': e.code,
+        'error_name': e.name,
+        'error_reason': e.description,
+    })
+    response.content_type = 'application/json'
+    return response
+
+
 class StatusResponse(TypedDict):
     status: str
 
 
 def must_get_session_id() -> str:
+    session_id = request.args.get('session_id')
+    if session_id is not None:
+        if not sessions.session_exists(session_id):
+            flask.abort(400, f'Session ID `{session_id}` not found.')
+        if sessions.session_exists(session_id):
+            return session_id
+
     session_id = request.headers.get('SessionID', '')
     if session_id == '':
         flask.abort(400, 'Header `SessionID` required.')
@@ -102,10 +128,8 @@ UNDETECTED = 'undetected'
 @app.get('/api/v1/predictions')
 def get_predictions() -> GetPredictionsResponse:
     session_id = must_get_session_id()
-    yolov_predictions = []
-    for input_image in inputs.read_images_for_session(session_id):
-        yolov_predictions += predict_bounding_boxes(input_image, session_id)
 
+    yolov_predictions = predict_bounding_boxes_for_session(session_id)
     individual_predictions = predict_individuals_from_yolov_predictions(yolov_predictions)
 
     yolov_predictions.sort(key=lambda p: p.cropped_file_name)
@@ -126,7 +150,19 @@ def get_predictions() -> GetPredictionsResponse:
             accepted=False,
             ignored=False,
         ))
+    save_annotations_for_session(session_id, annotations)
     return {'status': 'ok', 'annotations': annotations}
+
+
+class GetAnnotationsResponse(TypedDict):
+    status: str
+    annotations: List[Annotation]
+
+
+@app.get('/api/v1/annotations')
+def get_annotations() -> GetAnnotationsResponse:
+    session_id = must_get_session_id()
+    return {'status': 'ok', 'annotations': fetch_annotations_for_session(session_id)}
 
 
 @app.post('/api/v1/annotations')
@@ -148,10 +184,65 @@ def post_annotations() -> StatusResponse:
 
 
 @app.get('/api/v1/retrain')
-def get_retrain_classifier():
+def get_retrain() -> StatusResponse:
     session_id = must_get_session_id()
-    annotations = fetch_annotations_for_session(session_id)
-    #retrain_classifier(annotations)
+    retrain_classifier(fetch_annotations_for_session(session_id))
+    return {'status': 'ok'}
+
+
+class KnownIndividual(TypedDict):
+    name: str
+    species: str
+    example_image_src: str
+
+
+class GetKnownIndividualsResponse(TypedDict):
+    status: str
+    individuals: List[KnownIndividual]
+
+
+@app.get('/api/v1/known_individuals')
+def get_known_individuals() -> GetKnownIndividualsResponse:
+    individuals = []
+    for species in Species:
+        for label in species.read_labels():
+            for obj in s3_bucket.objects.filter(Prefix=f'{species.training_data_location()}{label}/'):
+                print('obj.key')
+                if obj.key.endswith('.jpg'):
+                    individuals.append(KnownIndividual(
+                        name=label,
+                        species=species.value,
+                        example_image_src=obj.key
+                    ))
+                    # Include 1 example for each individual.
+                    break
+    return {'status': 'ok', 'individuals': individuals}
+
+
+class GetLabelsResponse(TypedDict):
+    status: str
+    labels: List[str]
+
+
+@app.get('/api/v1/labels')
+def get_labels() -> GetLabelsResponse:
+    species_arg = request.args.get('species')
+    if species_arg is None:
+        flask.abort(400, f'Species required.')
+    species = Species.from_string(species_arg)
+    if species is None:
+        flask.abort(400, f'No labels for {species_arg}.')
+    return {'status': 'ok', 'labels': species.read_labels()}
+
+
+class GetSpeciesResponse(TypedDict):
+    status: str
+    species: List[str]
+
+
+@app.get('/api/v1/species')
+def get_species() -> GetSpeciesResponse:
+    return {'status': 'ok', 'species': [x.value for x in Species]}
 
 
 @app.get("/")
