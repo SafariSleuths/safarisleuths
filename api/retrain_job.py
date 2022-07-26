@@ -57,7 +57,7 @@ def truncate_job_logs(session_id: str) -> None:
 
 def log_event(event: RetrainEventLog) -> None:
     event_json = json.dumps(event)
-    redis_client.lpush(f"{LOGS_REDIS_KEY}:{event['session_id']}", event_json)
+    redis_client.rpush(f"{LOGS_REDIS_KEY}:{event['session_id']}", event_json)
 
 
 def read_event_logs(session_id: str) -> List[RetrainEventLog]:

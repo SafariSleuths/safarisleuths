@@ -58,17 +58,32 @@ export function ViewRetraining(props: { sessionID: string }) {
       <Button onClick={() => startRetraining(props.sessionID)}>
         Start Retraining
       </Button>
+      <ViewRetrainAnnotations sessionID={props.sessionID} />
       <RetrainingLogs logs={retrainLogs} />
     </Box>
   );
 }
 
-function ViewRetrainAnnotations(props: { annotations: Array<Annotation> }) {
+function ViewRetrainAnnotations(props: { sessionID: string }) {
+  const [annotations, setAnnotations] = React.useState<
+    Array<Annotation> | undefined
+  >(undefined);
+
+  const loaded = React.useRef(false);
+  React.useEffect(() => {
+    if (!loaded.current) {
+      fetchAnnotations(props.sessionID).then((new_annotations) =>
+        setAnnotations(new_annotations.filter((a) => a.accepted))
+      );
+      loaded.current = true;
+    }
+  });
+
   return (
     <Box>
       <List>
-        {props.annotations.map((annotation) => (
-          <ListItem>{annotation.cropped_file_name}</ListItem>
+        {annotations?.map((annotation, i) => (
+          <ListItem key={i}>{annotation.cropped_file_name}</ListItem>
         ))}
       </List>
     </Box>
@@ -85,10 +100,10 @@ function RetrainingLogs(props: { logs: Array<RetrainEventLog> }) {
       <h2>Retraining Logs</h2>
       <Table size={"small"}>
         <TableBody>
-          {props.logs.map((log) => (
-            <TableRow>
+          {props.logs.map((log, i) => (
+            <TableRow key={i}>
               <TableCell align="left">
-                {new Date(log.created_at * 1000).toISOString()}
+                {new Date(log.created_at * 1000).toLocaleString()}
               </TableCell>
               <TableCell align="left">{log.message}</TableCell>
             </TableRow>
@@ -147,4 +162,21 @@ function startRetraining(sessionID: string): Promise<string> {
   })
     .then((resp) => resp.json())
     .then((data: GetRetrainResponse) => data.status);
+}
+
+interface GetAnnotationsResponse {
+  status: string;
+  annotations: Array<Annotation>;
+}
+
+function fetchAnnotations(sessionID: string): Promise<Array<Annotation>> {
+  return fetch("/api/v1/annotations", {
+    method: "GET",
+    headers: {
+      Accept: "application/json",
+      SessionID: sessionID,
+    },
+  })
+    .then((resp) => resp.json())
+    .then((data: GetAnnotationsResponse) => data.annotations);
 }
