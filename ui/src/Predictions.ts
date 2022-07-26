@@ -24,21 +24,21 @@ export function fetchPredictions(
       Accept: "application/json",
       SessionID: sessionID,
     },
-  })
-    .then((resp) => resp.json())
-    .catch((reason) => console.log(reason));
+  }).then((resp) => resp.json());
 }
 
-const AnnotationsCacheKey = "prediction";
-
-export function readAnnotationsCache(): Array<Annotation> | undefined {
-  const localAnnotations = localStorage.getItem(AnnotationsCacheKey);
-  if (localAnnotations !== null) {
-    return JSON.parse(localAnnotations);
-  }
-  return undefined;
+interface AnnotationsResponse {
+  annotations: Array<Annotation>;
 }
 
-export function writeAnnotationsCache(annotations: Array<Annotation>) {
-  localStorage.setItem(AnnotationsCacheKey, JSON.stringify(annotations));
+export function fetchAnnotations(
+  sessionID: string
+): Promise<AnnotationsResponse> {
+  return fetch("/api/v1/annotations", {
+    method: "GET",
+    headers: {
+      Accept: "application/json",
+      SessionID: sessionID,
+    },
+  }).then((resp) => resp.json());
 }

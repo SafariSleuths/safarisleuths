@@ -33,17 +33,12 @@ import {
   Check,
   Cancel,
 } from "@mui/icons-material";
-import {
-  Annotation,
-  fetchPredictions,
-  readAnnotationsCache,
-  writeAnnotationsCache,
-} from "./Predictions";
+import { Annotation, fetchAnnotations, fetchPredictions } from "./Predictions";
 import { ImageModal } from "./ImageModal";
 
 export function ViewPredictions(props: { sessionID: string }) {
   const [annotations, setAnnotations] = useState<Array<Annotation> | undefined>(
-    readAnnotationsCache()
+    undefined
   );
 
   const [showLoading, setShowLoading] = useState(false);
@@ -64,20 +59,22 @@ export function ViewPredictions(props: { sessionID: string }) {
       annotationsById.set(annotation.id, annotation)
     );
     const newAnnotations = Array.from(annotationsById.values());
-    writeAnnotationsCache(newAnnotations);
     setAnnotations(newAnnotations);
   };
+
+  React.useEffect(() => {
+    if (annotations === undefined) {
+      fetchAnnotations(props.sessionID).then((resp) =>
+        setAnnotations(resp.annotations.sort(compareAnnotations))
+      );
+    }
+  });
 
   return (
     <Stack spacing={2}>
       <p>
         Compute predictions and review results. Once images have been reviewed,
-        they can be used to fine-tuning the model for future predictions. The
-        demo uses training images and random a confidence score for the
-        predictions. All the results have been precomputed, so the "Compute
-        Results" button will work very quickly; once we have all the models in
-        place, this will take significantly longer to complete. We haven't wired
-        in the retraining pipeline, so the retraining button is disabled.
+        they can be used to fine-tuning the model for future predictions.
       </p>
       <TopButtonGroup
         sessionID={props.sessionID}
@@ -135,22 +132,31 @@ function fetchAndSortPredictions(
 ) {
   setShowLoading(true);
   fetchPredictions(sessionID).then((data) => {
-    data.annotations.sort((a, b) => {
-      switch (true) {
-        case a.predicted_name === b.predicted_name:
-          return 0;
-        case a.predicted_name !== undefined && b.predicted_name !== undefined:
-          return a.predicted_name?.localeCompare(b.predicted_name || "") || 0;
-        case a.predicted_name === undefined:
-          return 1;
-        default:
-          return -1;
-      }
-    });
-    writeAnnotationsCache(data.annotations);
+    data.annotations.sort(compareAnnotations);
     setAnnotations(data.annotations);
     setShowLoading(false);
   });
+}
+
+function compareAnnotations(a: Annotation, b: Annotation): number {
+  if (a.predicted_species != b.predicted_species) {
+    switch (true) {
+      case a.predicted_species === Undetected:
+        return 1;
+      case b.predicted_species === Undetected:
+        return -1;
+      default:
+        return a.predicted_species.localeCompare(b.predicted_species);
+    }
+  }
+  switch (true) {
+    case a.predicted_species === Undetected:
+      return 1;
+    case b.predicted_species === Undetected:
+      return -1;
+    default:
+      return a.predicted_species.localeCompare(b.predicted_species);
+  }
 }
 
 function DisplayAnnotations(props: {

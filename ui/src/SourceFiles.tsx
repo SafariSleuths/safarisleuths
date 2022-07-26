@@ -28,11 +28,7 @@ export function SourceFiles(props: {
 
   return (
     <Stack spacing={2}>
-      <p>
-        Upload new photos to use for predictions. For the demo, the upload
-        button is disabled, but you will be able to upload whatever amount of
-        images files here.
-      </p>
+      <p>Upload new photos to use for predictions.</p>
       <SessionSelect
         sessionID={props.sessionID}
         setSessionID={props.setSessionID}

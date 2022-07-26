@@ -40,18 +40,18 @@ export function Documentation() {
               <Typography fontFamily={"monospace"}>id</Typography>
             </TableCell>
             <TableCell>
-              <Typography fontFamily={"monospace"}>integer</Typography>
+              <Typography fontFamily={"monospace"}>string</Typography>
             </TableCell>
-            <TableCell>Unique annotation id.</TableCell>
+            <TableCell>A unique ID for the annotation.</TableCell>
           </TableRow>
           <TableRow>
             <TableCell>
-              <Typography fontFamily={"monospace"}>image_id</Typography>
+              <Typography fontFamily={"monospace"}>file_name</Typography>
             </TableCell>
             <TableCell>
-              <Typography fontFamily={"monospace"}>integer</Typography>
+              <Typography fontFamily={"monospace"}>url</Typography>
             </TableCell>
-            <TableCell>Unique image id.</TableCell>
+            <TableCell>Location of the original file.</TableCell>
           </TableRow>
           <TableRow>
             <TableCell>
@@ -64,15 +64,12 @@ export function Documentation() {
           </TableRow>
           <TableRow>
             <TableCell>
-              <Typography fontFamily={"monospace"}>name</Typography>
+              <Typography fontFamily={"monospace"}>predicted_name</Typography>
             </TableCell>
             <TableCell>
               <Typography fontFamily={"monospace"}>string</Typography>
             </TableCell>
-            <TableCell>
-              The name of the individual animal with the highest prediction
-              confidence.
-            </TableCell>
+            <TableCell>The predicted name of the individual animal.</TableCell>
           </TableRow>
           <TableRow>
             <TableCell>
@@ -81,49 +78,40 @@ export function Documentation() {
             <TableCell>
               <Typography fontFamily={"monospace"}>string</Typography>
             </TableCell>
-            <TableCell>Species of the animal.</TableCell>
+            <TableCell>The predicted species of the animal.</TableCell>
           </TableRow>
           <TableRow>
             <TableCell>
-              <Typography fontFamily={"monospace"}>confidence</Typography>
+              <Typography fontFamily={"monospace"}>
+                species_confidence
+              </Typography>
             </TableCell>
             <TableCell>
               <Typography fontFamily={"monospace"}>float</Typography>
             </TableCell>
-            <TableCell>
-              The prediction confidence of the individual prediction.
-            </TableCell>
-          </TableRow>
-          <TableRow>
-            <TableCell>
-              <Typography fontFamily={"monospace"}>predictions</Typography>
-            </TableCell>
-            <TableCell>
-              <Typography fontFamily={"monospace"}>
-                Array of IndividualPredictions
-              </Typography>
-            </TableCell>
-            <TableCell>Top 5 individual predictions.</TableCell>
-          </TableRow>
-          <TableRow>
-            <TableCell>
-              <Typography fontFamily={"monospace"}>image_src</Typography>
-            </TableCell>
-            <TableCell>
-              <Typography fontFamily={"monospace"}>url</Typography>
-            </TableCell>
-            <TableCell>Link to the original image.</TableCell>
+            <TableCell>The confidence of the species prediction.</TableCell>
           </TableRow>
           <TableRow>
             <TableCell>
               <Typography fontFamily={"monospace"}>
-                annotated_image_src
+                annotated_file_name
               </Typography>
             </TableCell>
             <TableCell>
               <Typography fontFamily={"monospace"}>url</Typography>
             </TableCell>
-            <TableCell>Link to the annotated image.</TableCell>
+            <TableCell>Location of the annotated image.</TableCell>
+          </TableRow>
+          <TableRow>
+            <TableCell>
+              <Typography fontFamily={"monospace"}>
+                cropped_file_name
+              </Typography>
+            </TableCell>
+            <TableCell>
+              <Typography fontFamily={"monospace"}>url</Typography>
+            </TableCell>
+            <TableCell>Location of the cropped image.</TableCell>
           </TableRow>
           <TableRow>
             <TableCell>
@@ -151,43 +139,6 @@ export function Documentation() {
               <Typography fontFamily={"monospace"}>Dictionary</Typography>
             </TableCell>
             <TableCell>Geolocation data, if available.</TableCell>
-          </TableRow>
-        </TableBody>
-      </Table>
-      <h4>IndividualPrediction</h4>
-      <p>This is the a prediction of an individual animal within an image.</p>
-      <Table size={"small"}>
-        <TableHead>
-          <TableRow>
-            <TableCell>
-              <strong>Field</strong>
-            </TableCell>
-            <TableCell>
-              <strong>Type</strong>
-            </TableCell>
-            <TableCell>
-              <strong>Summary</strong>
-            </TableCell>
-          </TableRow>
-        </TableHead>
-        <TableBody>
-          <TableRow>
-            <TableCell>
-              <Typography fontFamily={"monospace"}>name</Typography>
-            </TableCell>
-            <TableCell>
-              <Typography fontFamily={"monospace"}>string</Typography>
-            </TableCell>
-            <TableCell>Unique name of the predicted individual.</TableCell>
-          </TableRow>
-          <TableRow>
-            <TableCell>
-              <Typography fontFamily={"monospace"}>confidence</Typography>
-            </TableCell>
-            <TableCell>
-              <Typography fontFamily={"monospace"}>float</Typography>
-            </TableCell>
-            <TableCell>The confidence score for this prediction.</TableCell>
           </TableRow>
         </TableBody>
       </Table>
