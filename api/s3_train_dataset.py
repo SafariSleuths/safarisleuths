@@ -1,6 +1,8 @@
 import tempfile
-from typing import List, NamedTuple
+from typing import List, NamedTuple, Tuple
 
+import torch
+from PIL import Image
 from torch.utils.data import Dataset
 from torchvision import transforms
 

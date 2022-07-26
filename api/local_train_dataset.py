@@ -1,5 +1,9 @@
-from typing import List, NamedTuple
+import glob
+from typing import List, NamedTuple, Tuple
 
+import PIL
+import PIL.Image
+import torch
 from torch.utils.data import Dataset
 from torchvision import transforms
 
@@ -41,6 +45,6 @@ class LocalTrainDataset(Dataset):
         return len(self.inputs)
 
     def __getitem__(self, idx) -> Tuple[torch.Tensor, int]:
-        image = Image.open(self.inputs[idx].file_name).convert('RGB')
+        image = PIL.Image.open(self.inputs[idx].file_name).convert('RGB')
         image = self.transform(image)
         return image, self.labels.index(self.inputs[idx].name)

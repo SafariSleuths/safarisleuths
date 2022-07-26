@@ -20,7 +20,8 @@ from torch.utils.data import DataLoader
 
 from api import retrain_job
 from api.annotations import Annotation, fetch_annotations_for_session
-from api.retrain_job import RetrainJob, log_event, RetrainEventLog
+from api.local_train_dataset import LocalTrainDataset
+from api.retrain_job import RetrainJob, log_event, RetrainEventLog, truncate_job_logs
 from api.s3_client import s3_bucket
 from api.sessions import must_get_session_id
 from api.species import Species
@@ -47,12 +48,9 @@ def get_retrain() -> StatusResponse:
 def retrain_classifier(session_id: str, logger: Logger) -> None:
     def __log_event(message: str) -> None:
         logger.info(message)
-        log_event(RetrainEventLog(
-            session_id=session_id,
-            created_at=time.time(),
-            message=f'Started retraining for session {session_id}.'
-        ))
+        log_event(RetrainEventLog(session_id=session_id, created_at=time.time(), message=message))
 
+    truncate_job_logs(session_id)
     __log_event(f'Started retraining for session {session_id}.')
 
     job = retrain_job.read_job(session_id)

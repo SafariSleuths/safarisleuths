@@ -4,8 +4,6 @@ import json
 from enum import Enum
 from typing import Optional, List
 
-import joblib
-
 
 class Species(Enum):
     HYENA = 'Crocuta_crocuta'

@@ -11,7 +11,7 @@ from werkzeug.exceptions import HTTPException
 
 import api.sessions as sessions
 import api.inputs as inputs
-from api import retrain_classifier
+from api import retrain_classifier, retrain_job
 from api.annotations import Annotation, save_annotations_for_session, fetch_annotations_for_session
 from api.predict_bounding_boxes import crop_and_upload, annotate_and_upload, BoundingBox, \
     predict_bounding_boxes_for_session
@@ -31,6 +31,7 @@ logging.basicConfig(
 )
 
 app.register_blueprint(retrain_classifier.flask_blueprint)
+app.register_blueprint(retrain_job.flask_blueprint)
 
 
 @app.errorhandler(HTTPException)
