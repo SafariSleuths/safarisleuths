@@ -22,7 +22,7 @@ def embedding_num_sample(uploaded_images):
     uploaded_images: a local file path of uploaded images
     Returns: the number of prior training images to sample from S3
     """
-    batch_size = 128
+    batch_size = 320
     len_uploaded_images = len(glob.glob(uploaded_images + '/*/*'))
     total_images = ((int(len_uploaded_images * 3) // batch_size) + 1) * batch_size
     len_old_images = total_images - len_uploaded_images
@@ -166,7 +166,7 @@ def main(uploaded_images, s3_resource, s3_bucket):
         input_size=224,
     )
     # Use the same batch size as the model was initially trained with
-    batch_size = 128
+    batch_size = 320
     num_workers = 2
 
     # Create the dataloaders to train the embeddings and the classifier
