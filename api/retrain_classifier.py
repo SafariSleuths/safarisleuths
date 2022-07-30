@@ -20,7 +20,7 @@ from torch.utils.data import DataLoader
 
 from api import retrain_job
 from api.annotations import Annotation, read_annotations_for_collection
-from api.local_train_dataset import LocalTrainDataset
+from api.classifier_train_dataset import ClassifierTrainDataset
 from api.retrain_job import RetrainStatus, log_event, RetrainEventLog, truncate_job_logs
 from api.s3_client import s3_bucket
 from api.collections import must_get_collection_id
@@ -86,7 +86,7 @@ def retrain_classifier(collection_id: str, logger: Logger) -> None:
 
         __log_event(f'Loading training data for the {species} classifier.')
         load_data_start_time = datetime.now()
-        train_dataset = LocalTrainDataset(species, new_annotations)
+        train_dataset = ClassifierTrainDataset(species, new_annotations)
         train_dataloader = DataLoader(
             train_dataset,
             batch_size=1,  # Batch size to be 1 so that no training examples are dropped.

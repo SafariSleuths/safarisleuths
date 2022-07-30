@@ -1,10 +1,14 @@
 import json
+import time
+from multiprocessing import Process
 from typing import TypedDict, List, Optional
 
-from flask import Blueprint
+from flask import Blueprint, current_app
 
+from api.annotations import read_annotations_for_collection
 from api.collections import must_get_collection_id
 from api.redis_client import redis_client
+from api.retrain_embeddings import retrain_embeddings
 from api.status_response import StatusResponse
 
 JOBS_REDIS_KEY = 'retrain:jobs'
@@ -28,6 +32,28 @@ class RetrainEventLog(TypedDict):
 class GetRetrainStatusResponse(TypedDict):
     status: str
     job: Optional[RetrainStatus]
+
+
+@flask_blueprint.post('/api/v1/retrain/embeddings')
+def post_retrain_embeddings() -> StatusResponse:
+    collection_id = must_get_collection_id()
+    job = RetrainStatus(
+        collection_id=collection_id,
+        created_at=time.time(),
+        status='created'
+    )
+    save_job_status_to_redis(job)
+
+    new_annotations = read_annotations_for_collection(collection_id)
+    new_annotations = [a for a in new_annotations if a['accepted']]
+    if len(new_annotations) == 0:
+        job['status'] = 'completed'
+        save_job_status_to_redis(job)
+        current_app.logger.info('Retraining skipped since there are no new annotations for training.')
+        return {'status': 'ok'}
+
+    Process(target=retrain_embeddings, args=(new_annotations,)).start()
+    return {'status': 'ok'}
 
 
 @flask_blueprint.get('/api/v1/retrain/status')

@@ -25,12 +25,7 @@ class Species(Enum):
         return None
 
     def training_data_location(self) -> str:
-        if self == Species.HYENA:
-            return 'hyena.coco/processed/train/'
-        elif self == Species.LEOPARD:
-            return 'leopard.coco/processed/train/'
-        elif self == Species.GIRAFFE:
-            return 'great_zebra_giraffe/individual_recognition/train/'
+        return f'training_data/cropped/{self}'
 
     def model_location(self) -> str:
         return f'models/{self}_knn.joblib'
