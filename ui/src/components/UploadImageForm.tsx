@@ -3,7 +3,7 @@ import { Box, Button, CircularProgress, FormControl } from "@mui/material";
 import { uploadImages } from "../actions/Images";
 
 export function UploadImageForm(props: {
-  sessionID: string;
+  collectionID: string;
   uploadedImages: Array<string> | undefined;
   setUploadedImages: (value: Array<string> | undefined) => void;
 }) {
@@ -25,7 +25,7 @@ export function UploadImageForm(props: {
           disabled={selectedFiles == null}
           onClick={() => {
             setShowLoading(true);
-            uploadImages(props.sessionID, selectedFiles).then((uploaded) => {
+            uploadImages(props.collectionID, selectedFiles).then((uploaded) => {
               setShowLoading(false);
               setSelectedFiles(null);
               props.setUploadedImages([

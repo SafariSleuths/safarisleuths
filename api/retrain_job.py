@@ -3,58 +3,58 @@ from typing import TypedDict, List, Optional
 
 from flask import Blueprint
 
-from api import sessions
+from api.collections import must_get_collection_id
 from api.redis_client import redis_client
 from api.status_response import StatusResponse
 
-JOBS_REDIS_KEY = 'retrain_jobs'
-LOGS_REDIS_KEY = 'retrain_logs'
+JOBS_REDIS_KEY = 'retrain:jobs'
+LOGS_REDIS_KEY = 'retrain:logs'
 
 flask_blueprint = Blueprint('retrain_job', __name__)
 
 
-class RetrainJob(TypedDict):
-    session_id: str
+class RetrainStatus(TypedDict):
+    collection_id: str
     created_at: float
     status: str
 
 
 class RetrainEventLog(TypedDict):
-    session_id: str
+    collection_id: str
     created_at: float
     message: str
 
 
-class GetRetrainJobResponse(TypedDict):
+class GetRetrainStatusResponse(TypedDict):
     status: str
-    job: Optional[RetrainJob]
+    job: Optional[RetrainStatus]
 
 
-@flask_blueprint.get('/api/v1/retrain_job')
-def get_retrain_job() -> GetRetrainJobResponse:
-    session_id = sessions.must_get_session_id()
-    job = read_job(session_id) or RetrainJob(
-        session_id=session_id,
+@flask_blueprint.get('/api/v1/retrain/status')
+def get_retrain_status() -> GetRetrainStatusResponse:
+    collection_id = must_get_collection_id()
+    job = read_job_status_from_redis(collection_id) or RetrainStatus(
+        collection_id=collection_id,
         created_at=0,
         status='not started'
     )
     return {'status': 'ok', 'job': job}
 
 
-@flask_blueprint.delete('/api/v1/retrain_job')
+@flask_blueprint.delete('/api/v1/retrain/status')
 def delete_retrain_job() -> StatusResponse:
-    session_id = sessions.must_get_session_id()
-    delete_job(session_id)
-    truncate_job_logs(session_id)
+    collection_id = must_get_collection_id()
+    delete_job_status_from_redis(collection_id)
+    truncate_job_logs(collection_id)
     return {'status': 'ok'}
 
 
-@flask_blueprint.get('/api/v1/abort_retrain_job')
+@flask_blueprint.post('/api/v1/retrain/abort')
 def abort_retrain_job() -> StatusResponse:
-    session_id = sessions.must_get_session_id()
-    job = read_job(session_id)
-    job['status'] = 'aborted'
-    save_job(job)
+    collection_id = must_get_collection_id()
+    job_status = read_job_status_from_redis(collection_id)
+    job_status['status'] = 'aborted'
+    save_job_status_to_redis(job_status)
     return {'status': 'ok'}
 
 
@@ -63,38 +63,38 @@ class GetRetrainLogsResponse(TypedDict):
     logs: List[RetrainEventLog]
 
 
-@flask_blueprint.get('/api/v1/retrain_logs')
+@flask_blueprint.get('/api/v1/retrain/logs')
 def get_retrain_logs() -> GetRetrainLogsResponse:
-    session_id = sessions.must_get_session_id()
-    return {'status': 'ok', 'logs': read_event_logs(session_id)}
+    collection_id = must_get_collection_id()
+    return {'status': 'ok', 'logs': read_event_logs(collection_id)}
 
 
-def truncate_job_logs(session_id: str) -> None:
-    redis_client.delete(f'{LOGS_REDIS_KEY}:{session_id}')
+def truncate_job_logs(collection_id: str) -> None:
+    redis_client.delete(f'{LOGS_REDIS_KEY}:{collection_id}')
 
 
 def log_event(event: RetrainEventLog) -> None:
     event_json = json.dumps(event)
-    redis_client.rpush(f"{LOGS_REDIS_KEY}:{event['session_id']}", event_json)
+    redis_client.rpush(f"{LOGS_REDIS_KEY}:{event['collection_id']}", event_json)
 
 
-def read_event_logs(session_id: str) -> List[RetrainEventLog]:
+def read_event_logs(collection_id: str) -> List[RetrainEventLog]:
     events = []
-    for event_json in redis_client.lrange(f'{LOGS_REDIS_KEY}:{session_id}', 0, -1):
+    for event_json in redis_client.lrange(f'{LOGS_REDIS_KEY}:{collection_id}', 0, -1):
         events.append(json.loads(event_json))
     return events
 
 
-def read_job(job_id: str) -> Optional[RetrainJob]:
-    job_json = redis_client.hget(JOBS_REDIS_KEY, job_id)
-    if job_json is None:
+def read_job_status_from_redis(collection_id: str) -> Optional[RetrainStatus]:
+    status_json = redis_client.hget(JOBS_REDIS_KEY, collection_id)
+    if status_json is None:
         return None
-    return json.loads(job_json)
+    return json.loads(status_json)
 
 
-def save_job(job: RetrainJob) -> None:
-    redis_client.hset(JOBS_REDIS_KEY, job['session_id'], json.dumps(job, default=str))
+def save_job_status_to_redis(job_status: RetrainStatus) -> None:
+    redis_client.hset(JOBS_REDIS_KEY, job_status['collection_id'], json.dumps(job_status, default=str))
 
 
-def delete_job(job_id: str) -> None:
-    redis_client.hdel(JOBS_REDIS_KEY, job_id)
+def delete_job_status_from_redis(collection_id: str) -> None:
+    redis_client.hdel(JOBS_REDIS_KEY, collection_id)

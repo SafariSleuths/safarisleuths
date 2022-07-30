@@ -7,8 +7,7 @@ import PIL
 import torch
 from PIL import Image, ImageDraw
 
-from api import inputs
-from api.inputs import InputImage
+from api.prediction_inputs import InputImage, read_images_for_collection
 from api.s3_client import s3_bucket
 
 logger = logging.getLogger(__name__)
@@ -37,7 +36,7 @@ class YolovPrediction(NamedTuple):
     predicted_species: Optional[str]
 
 
-def predict_bounding_boxes_for_session(session_id: str) -> List[YolovPrediction]:
+def predict_bounding_boxes_for_collection(collection_id: str) -> List[YolovPrediction]:
     logger.info("Started bounding box prediction.")
     start_time = datetime.now()
 
@@ -47,8 +46,8 @@ def predict_bounding_boxes_for_session(session_id: str) -> List[YolovPrediction]
     )
 
     yolov_predictions: List[YolovPrediction] = []
-    for input_image in inputs.read_images_for_session(session_id):
-        yolov_predictions += predict_bounding_boxes(model, input_image, session_id)
+    for input_image in read_images_for_collection(collection_id):
+        yolov_predictions += predict_bounding_boxes(model, input_image, collection_id)
     logger.info(f'Bounding box predictions completed after {datetime.now() - start_time}.')
 
     logger.info(f'Uploading results.')
@@ -71,7 +70,7 @@ def predict_bounding_boxes_for_session(session_id: str) -> List[YolovPrediction]
     return yolov_predictions
 
 
-def predict_bounding_boxes(model, input_image: InputImage, session_id: str) -> List[YolovPrediction]:
+def predict_bounding_boxes(model, input_image: InputImage, collection_id: str) -> List[YolovPrediction]:
     raw_results = model(input_image.resized_image, size=640).pandas().xyxy[0]
     raw_results.reset_index()
 
@@ -95,8 +94,8 @@ def predict_bounding_boxes(model, input_image: InputImage, session_id: str) -> L
         predictions.append(YolovPrediction(
             id=output_file_name.removesuffix('.jpg'),
             file_name=input_image.file_name,
-            annotated_file_name=f'{OUTPUTS_PATH}/{session_id}/annotated/{species_name}/{output_file_name}',
-            cropped_file_name=f'{OUTPUTS_PATH}/{session_id}/cropped/{species_name}/{output_file_name}',
+            annotated_file_name=f'{OUTPUTS_PATH}/{collection_id}/annotated/{species_name}/{output_file_name}',
+            cropped_file_name=f'{OUTPUTS_PATH}/{collection_id}/cropped/{species_name}/{output_file_name}',
             bbox=yolov2coco(
                 xmin=prediction['xmin'],
                 xmax=prediction['xmax'],

@@ -19,11 +19,11 @@ from sklearn.preprocessing import normalize
 from torch.utils.data import DataLoader
 
 from api import retrain_job
-from api.annotations import Annotation, fetch_annotations_for_session
+from api.annotations import Annotation, read_annotations_for_collection
 from api.local_train_dataset import LocalTrainDataset
-from api.retrain_job import RetrainJob, log_event, RetrainEventLog, truncate_job_logs
+from api.retrain_job import RetrainStatus, log_event, RetrainEventLog, truncate_job_logs
 from api.s3_client import s3_bucket
-from api.sessions import must_get_session_id
+from api.collections import must_get_collection_id
 from api.species import Species
 from api.predict_individual import load_backbone
 from api.status_response import StatusResponse
@@ -32,43 +32,43 @@ from flask import current_app
 flask_blueprint = Blueprint('retrain_classifier', __name__)
 
 
-@flask_blueprint.get('/api/v1/retrain')
-def get_retrain() -> StatusResponse:
-    session_id = must_get_session_id()
+@flask_blueprint.post('/api/v1/retrain/start')
+def post_retrain() -> StatusResponse:
+    collection_id = must_get_collection_id()
 
-    retrain_job.save_job(RetrainJob(
-        session_id=session_id,
+    retrain_job.save_job_status_to_redis(RetrainStatus(
+        collection_id=collection_id,
         created_at=time.time(),
         status='created'
     ))
-    Process(target=retrain_classifier, args=(session_id, current_app.logger)).start()
+    Process(target=retrain_classifier, args=(collection_id, current_app.logger)).start()
     return {'status': 'ok'}
 
 
-def retrain_classifier(session_id: str, logger: Logger) -> None:
+def retrain_classifier(collection_id: str, logger: Logger) -> None:
     def __log_event(message: str) -> None:
         logger.info(message)
-        log_event(RetrainEventLog(session_id=session_id, created_at=time.time(), message=message))
+        log_event(RetrainEventLog(collection_id=collection_id, created_at=time.time(), message=message))
 
     def __should_abort() -> bool:
-        job = retrain_job.read_job(session_id)
+        job = retrain_job.read_job_status_from_redis(collection_id)
         if job['status'] == 'aborted':
             __log_event('Retraining aborted!')
             return True
         return False
 
-    truncate_job_logs(session_id)
-    __log_event(f'Started retraining for session {session_id}.')
+    truncate_job_logs(collection_id)
+    __log_event(f'Started retraining for collection {collection_id}.')
 
-    job = retrain_job.read_job(session_id)
+    job = retrain_job.read_job_status_from_redis(collection_id)
     job['status'] = 'started'
-    retrain_job.save_job(job)
+    retrain_job.save_job_status_to_redis(job)
 
-    new_annotations = fetch_annotations_for_session(session_id)
+    new_annotations = read_annotations_for_collection(collection_id)
     new_annotations = [a for a in new_annotations if a['accepted']]
     if len(new_annotations) == 0:
         job['status'] = 'completed'
-        retrain_job.save_job(job)
+        retrain_job.save_job_status_to_redis(job)
         __log_event('Retraining skipped since there are no new annotations for training.')
         return
 
@@ -114,8 +114,8 @@ def retrain_classifier(session_id: str, logger: Logger) -> None:
             json.dump(train_dataset.labels, f)
 
     job['status'] = 'completed'
-    retrain_job.save_job(job)
-    __log_event(f'Completed all retraining tasks for session {session_id}.')
+    retrain_job.save_job_status_to_redis(job)
+    __log_event(f'Completed all retraining tasks for collection {collection_id}.')
 
 
 def __group_annotations_by_species(annotations: List[Annotation]) -> Dict[Species, List[Annotation]]:

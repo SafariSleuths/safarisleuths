@@ -1,17 +1,19 @@
 import { Annotation } from "../actions/Annotations";
-
-interface PredictionResponse {
-  annotations: Array<Annotation>;
-}
+import { failIfNotOk, StatusResponse } from "./StatusResponse";
 
 export function fetchPredictions(
-  sessionID: string
-): Promise<PredictionResponse> {
-  return fetch("/api/v1/predictions", {
-    method: "GET",
-    headers: {
-      Accept: "application/json",
-      SessionID: sessionID,
-    },
-  }).then((resp) => resp.json());
+  collectionID: string
+): Promise<Array<Annotation>> {
+  interface PredictionResponse extends StatusResponse {
+    annotations: Array<Annotation>;
+  }
+
+  return fetch(`/api/v1/predictions?collectionID=${collectionID}`, {
+    method: "POST",
+  })
+    .then((resp) => resp.json())
+    .then((data: PredictionResponse) => {
+      failIfNotOk(data);
+      return data.annotations;
+    });
 }

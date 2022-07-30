@@ -17,7 +17,7 @@ import { SummaryTable } from "./SummaryTable";
 import { PredictionButtons } from "./PredictionButtons";
 import { AnnotatedImagesDisplay } from "./AnnotatedImagesDisplay";
 
-export function PredictionResults(props: { sessionID: string }) {
+export function PredictionResults(props: { collectionID: string }) {
   const [annotations, setAnnotations] = useState<Array<Annotation> | undefined>(
     undefined
   );
@@ -45,7 +45,7 @@ export function PredictionResults(props: { sessionID: string }) {
 
   React.useEffect(() => {
     if (annotations === undefined) {
-      fetchAnnotations(props.sessionID).then((newAnnotations) =>
+      fetchAnnotations(props.collectionID).then((newAnnotations) =>
         setAnnotations(newAnnotations.sort(compareAnnotations))
       );
     }
@@ -58,13 +58,13 @@ export function PredictionResults(props: { sessionID: string }) {
         they can be used to fine-tuning the model for future predictions.
       </p>
       <PredictionButtons
-        sessionID={props.sessionID}
+        collectionID={props.collectionID}
         setAnnotations={setAnnotations}
         setShowLoading={setShowLoading}
         jsonDownloadUrl={jsonDownloadUrl}
       />
       <DisplayAnnotations
-        sessionID={props.sessionID}
+        collectionID={props.collectionID}
         showLoading={showLoading}
         updateAnnotations={updateAnnotations}
         annotationsByName={annotationsByName}
@@ -74,7 +74,7 @@ export function PredictionResults(props: { sessionID: string }) {
 }
 
 function DisplayAnnotations(props: {
-  sessionID: string;
+  collectionID: string;
   showLoading: boolean;
   updateAnnotations: (updates: Array<Annotation>) => void;
   annotationsByName: Map<string, Array<Annotation>>;
@@ -96,7 +96,7 @@ function DisplayAnnotations(props: {
         </Box>
       </Paper>
       <AnimalBreakdown
-        sessionID={props.sessionID}
+        collectionID={props.collectionID}
         name={Undetected}
         subtitle={"We could not detect or label the animal in these images."}
         annotations={props.annotationsByName.get(Undetected) || []}
@@ -106,7 +106,7 @@ function DisplayAnnotations(props: {
         .filter(([name, _]) => name !== Undetected)
         .map(([name, annotations]) => (
           <AnimalBreakdown
-            sessionID={props.sessionID}
+            collectionID={props.collectionID}
             key={name}
             name={name}
             subtitle={""}
@@ -119,7 +119,7 @@ function DisplayAnnotations(props: {
 }
 
 function AnimalBreakdown(props: {
-  sessionID: string;
+  collectionID: string;
   name: string;
   annotations: Array<Annotation>;
   setAnnotations: (v: Array<Annotation>) => void;
@@ -148,7 +148,7 @@ function AnimalBreakdown(props: {
             Species: <i>{species}</i>
           </Box>
           <AnimalImageList
-            sessionID={props.sessionID}
+            collectionID={props.collectionID}
             annotations={props.annotations}
             setAnnotations={props.setAnnotations}
           />
@@ -161,7 +161,7 @@ function AnimalBreakdown(props: {
 function AnimalImageList(props: {
   annotations: Array<Annotation>;
   setAnnotations: (v: Array<Annotation>) => void;
-  sessionID: string;
+  collectionID: string;
 }) {
   props.annotations.sort((a, b) => {
     let a_score = 0;
@@ -188,7 +188,7 @@ function AnimalImageList(props: {
     <ImageList cols={3} gap={12}>
       {props.annotations.map((annotation, i) => (
         <AnnotatedImagesDisplay
-          sessionID={props.sessionID}
+          collectionID={props.collectionID}
           key={i}
           annotation={annotation}
           setAnnotation={(v: Annotation) => {

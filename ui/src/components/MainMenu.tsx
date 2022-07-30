@@ -13,19 +13,22 @@ export function MainMenu() {
     setValue(newValue);
   };
 
-  const [sessionID, setSessionID] = React.useState("Demo");
+  const [collectionID, setCollectionID] = React.useState("Demo");
   let content = <Box />;
   switch (value) {
     case 0:
       content = (
-        <SourcePhotos sessionID={sessionID} setSessionID={setSessionID} />
+        <SourcePhotos
+          collectionID={collectionID}
+          setCollectionID={setCollectionID}
+        />
       );
       break;
     case 1:
-      content = <PredictionResults sessionID={sessionID} />;
+      content = <PredictionResults collectionID={collectionID} />;
       break;
     case 2:
-      content = <Retraining sessionID={sessionID} />;
+      content = <Retraining collectionID={collectionID} />;
       break;
     case 3:
       content = <KnownIndividuals />;

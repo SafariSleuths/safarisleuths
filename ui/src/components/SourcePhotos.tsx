@@ -1,13 +1,13 @@
 import React, { useEffect, useState } from "react";
 import { Stack } from "@mui/material";
-import { SessionSelect } from "./SessionSelect";
+import { CollectionSelect } from "./CollectionSelect";
 import { listImages } from "../actions/Images";
 import { UploadImageForm } from "./UploadImageForm";
 import { UploadedImagesDisplay } from "./UploadedImagesDisplay";
 
 export function SourcePhotos(props: {
-  sessionID: string;
-  setSessionID: (v: string) => void;
+  collectionID: string;
+  setCollectionID: (v: string) => void;
 }) {
   const [uploadedImages, setUploadedImages] = useState<
     Array<string> | undefined
@@ -15,8 +15,8 @@ export function SourcePhotos(props: {
 
   useEffect(() => {
     if (uploadedImages === undefined) {
-      listImages(props.sessionID).then((data) =>
-        setUploadedImages(data.images)
+      listImages(props.collectionID).then((images) =>
+        setUploadedImages(images)
       );
     }
   });
@@ -24,18 +24,18 @@ export function SourcePhotos(props: {
   return (
     <Stack spacing={2}>
       <p>Upload new photos to use for predictions.</p>
-      <SessionSelect
-        sessionID={props.sessionID}
-        setSessionID={props.setSessionID}
+      <CollectionSelect
+        collectionID={props.collectionID}
+        setCollectionID={props.setCollectionID}
         setUploadedFiles={setUploadedImages}
       />
       <UploadImageForm
-        sessionID={props.sessionID}
+        collectionID={props.collectionID}
         uploadedImages={uploadedImages}
         setUploadedImages={setUploadedImages}
       />
       <UploadedImagesDisplay
-        sessionID={props.sessionID}
+        collectionID={props.collectionID}
         uploadedImages={uploadedImages || []}
         setUploadedImages={setUploadedImages}
       />

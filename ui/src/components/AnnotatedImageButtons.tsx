@@ -7,10 +7,10 @@ import { EditAnnotationModal } from "./EditAnnotationModal";
 export function AnnotatedImageButtons(props: {
   annotation: Annotation;
   setAnnotation: (v: Annotation) => void;
-  sessionID: string;
+  collectionID: string;
 }) {
   const submit = (annotation: Annotation) => {
-    submitAnnotations(props.sessionID, [annotation]).then(() =>
+    submitAnnotations(props.collectionID, [annotation]).then(() =>
       props.setAnnotation(annotation)
     );
   };

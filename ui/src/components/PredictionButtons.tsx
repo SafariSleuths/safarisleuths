@@ -5,14 +5,14 @@ import React from "react";
 import { fetchPredictions } from "../actions/Predictions";
 
 export function PredictionButtons(props: {
-  sessionID: string;
+  collectionID: string;
   setShowLoading: (v: boolean) => void;
   setAnnotations: (v: Array<Annotation>) => void;
   jsonDownloadUrl: string | undefined;
 }) {
   const getPredictions = () =>
     fetchAndSortPredictions(
-      props.sessionID,
+      props.collectionID,
       props.setShowLoading,
       props.setAnnotations
     );
@@ -38,14 +38,14 @@ export function PredictionButtons(props: {
 }
 
 function fetchAndSortPredictions(
-  sessionID: string,
+  collectionID: string,
   setShowLoading: (v: boolean) => void,
   setAnnotations: (v: Array<Annotation>) => void
 ) {
   setShowLoading(true);
-  fetchPredictions(sessionID).then((data) => {
-    data.annotations.sort(compareAnnotations);
-    setAnnotations(data.annotations);
+  fetchPredictions(collectionID).then((annotations) => {
+    annotations.sort(compareAnnotations);
+    setAnnotations(annotations);
     setShowLoading(false);
   });
 }

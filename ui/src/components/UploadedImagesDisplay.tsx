@@ -10,7 +10,7 @@ import React, { useState } from "react";
 import { ImageModal } from "./ImageModal";
 
 export function UploadedImagesDisplay(props: {
-  sessionID: string;
+  collectionID: string;
   uploadedImages: Array<string>;
   setUploadedImages: (v: Array<string>) => void;
 }) {
@@ -21,7 +21,7 @@ export function UploadedImagesDisplay(props: {
           <UploadedImageItem
             key={i}
             src={src}
-            sessionID={props.sessionID}
+            collectionID={props.collectionID}
             uploadedImages={props.uploadedImages}
             setUploadedImages={props.setUploadedImages}
           />
@@ -33,7 +33,7 @@ export function UploadedImagesDisplay(props: {
 
 function UploadedImageItem(props: {
   src: string;
-  sessionID: string;
+  collectionID: string;
   uploadedImages: Array<string>;
   setUploadedImages: (v: Array<string>) => void;
 }) {
@@ -41,7 +41,7 @@ function UploadedImageItem(props: {
   const title = `File name: ${props.src.split("/").reverse()[0]}`;
 
   const onClickDelete = () =>
-    deleteImages(props.sessionID, [props.src]).then(() =>
+    deleteImages(props.collectionID, [props.src]).then(() =>
       props.setUploadedImages(
         props.uploadedImages.filter((n) => n != props.src)
       )

@@ -11,11 +11,13 @@ export function EditAnnotationModal(props: {
   const inputRef = React.useRef<HTMLInputElement>(null);
   const [formError, setFormError] = React.useState<null | string>(null);
 
+  let newAnnotation: Annotation = { ...props.annotation };
+
   const onTextFieldChange = (
     e: ChangeEvent<HTMLTextAreaElement | HTMLInputElement>
   ) => {
     try {
-      JSON.parse(e.target.value);
+      newAnnotation = JSON.parse(e.target.value);
       setFormError(null);
     } catch (err) {
       setFormError(`${err}`);
@@ -51,7 +53,6 @@ export function EditAnnotationModal(props: {
           color={"primary"}
           disabled={formError !== null}
           onClick={() => {
-            let newAnnotation: Annotation = { ...props.annotation };
             newAnnotation.accepted = true;
             newAnnotation.ignored = false;
             props.submit(newAnnotation);

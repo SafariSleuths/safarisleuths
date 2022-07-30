@@ -1,33 +1,29 @@
-interface DeleteImagesResponse {
-  status: string;
-}
+import { failIfNotOk, StatusResponse } from "./StatusResponse";
 
 export function deleteImages(
-  sessionID: string,
+  collectionID: string,
   images: Array<string>
-): Promise<string> {
-  return fetch("/api/v1/images", {
+): Promise<void> {
+  return fetch(`/api/v1/images?collectionID=${collectionID}`, {
     method: "DELETE",
     headers: {
       Accept: "application/json",
       "Content-Type": "application/json",
-      SessionID: sessionID,
     },
-    body: JSON.stringify({ images: images }),
+    body: JSON.stringify(images),
   })
     .then((resp) => resp.json())
-    .then((data: DeleteImagesResponse) => data.status);
-}
-
-interface PostImagesResponse {
-  status: string;
-  uploaded: Array<string>;
+    .then((data: StatusResponse) => failIfNotOk(data));
 }
 
 export function uploadImages(
-  sessionID: string,
+  collectionID: string,
   files: FileList | null
 ): Promise<Array<string>> {
+  interface PostImagesResponse extends StatusResponse {
+    uploaded: Array<string>;
+  }
+
   if (files === null) {
     return Promise.resolve([]);
   }
@@ -36,28 +32,27 @@ export function uploadImages(
   for (let i = 0; i < files.length; i++) {
     data.append(files[i].name, files[i]);
   }
-  return fetch("/api/v1/images", {
+  return fetch(`/api/v1/images?collectionID=${collectionID}`, {
     method: "POST",
-    headers: { SessionID: sessionID },
+    headers: { "Content-Type": "multipart/form-data" },
     body: data,
   })
     .then((resp) => resp.json())
-    .then((data: PostImagesResponse) => data.uploaded);
+    .then((data: PostImagesResponse) => {
+      failIfNotOk(data);
+      return data.uploaded;
+    });
 }
 
-interface ListImagesResponse {
-  status: string;
-  images: Array<string>;
-}
+export function listImages(collectionID: string): Promise<Array<string>> {
+  interface ListImagesResponse extends StatusResponse {
+    images: Array<string>;
+  }
 
-export function listImages(sessionID: string): Promise<ListImagesResponse> {
-  return fetch("/api/v1/images", {
-    method: "GET",
-    headers: {
-      Accept: "application/json",
-      SessionID: sessionID,
-    },
-  })
+  return fetch(`/api/v1/images?collectionID=${collectionID}`, { method: "GET" })
     .then((resp) => resp.json())
-    .catch((reason) => console.log(reason));
+    .then((data: ListImagesResponse) => {
+      failIfNotOk(data);
+      return data.images;
+    });
 }

@@ -3,7 +3,7 @@ import { fetchAnnotations, Annotation } from "../actions/Annotations";
 import { Box, ImageList } from "@mui/material";
 import { RetrainingImageItem } from "./RetrainingImageItem";
 
-export function RetrainImagesDisplay(props: { sessionID: string }) {
+export function RetrainImagesDisplay(props: { collectionID: string }) {
   const [annotations, setAnnotations] = React.useState<
     Array<Annotation> | undefined
   >(undefined);
@@ -11,7 +11,7 @@ export function RetrainImagesDisplay(props: { sessionID: string }) {
   const loaded = React.useRef(false);
   React.useEffect(() => {
     if (!loaded.current) {
-      fetchAnnotations(props.sessionID).then((newAnnotations) =>
+      fetchAnnotations(props.collectionID).then((newAnnotations) =>
         setAnnotations(newAnnotations.filter((a) => a.accepted))
       );
       loaded.current = true;

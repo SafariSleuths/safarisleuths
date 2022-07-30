@@ -5,7 +5,7 @@ import { ImageModal } from "./ImageModal";
 import { AnnotatedImageButtons } from "./AnnotatedImageButtons";
 
 export function AnnotatedImagesDisplay(props: {
-  sessionID: string;
+  collectionID: string;
   annotation: Annotation;
   setAnnotation: (v: Annotation) => void;
 }) {
@@ -59,7 +59,7 @@ export function AnnotatedImagesDisplay(props: {
         }
       />
       <AnnotatedImageButtons
-        sessionID={props.sessionID}
+        collectionID={props.collectionID}
         annotation={props.annotation}
         setAnnotation={props.setAnnotation}
       />

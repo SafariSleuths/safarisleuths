@@ -9,7 +9,7 @@ import {
 } from "../actions/RetrainJob";
 
 export function RetrainingButtons(props: {
-  sessionID: string;
+  collectionID: string;
   job: RetrainJob | undefined;
   setJob: (v: RetrainJob | undefined) => void;
   setLogs: (v: Array<RetrainEventLog>) => void;
@@ -27,7 +27,7 @@ export function RetrainingButtons(props: {
       <Button
         disabled={!canStart}
         onClick={() =>
-          startRetraining(props.sessionID).then(() => {
+          startRetraining(props.collectionID).then(() => {
             props.setJob(undefined);
             props.setLogs([]);
           })
@@ -37,14 +37,14 @@ export function RetrainingButtons(props: {
       </Button>
       <Button
         disabled={!canAbort}
-        onClick={() => abortRetraining(props.sessionID)}
+        onClick={() => abortRetraining(props.collectionID)}
       >
         Abort Retraining
       </Button>
       <Button
         disabled={!canClear}
         onClick={() =>
-          clearRetraining(props.sessionID).then(() => {
+          clearRetraining(props.collectionID).then(() => {
             props.setJob(undefined);
             props.setLogs([]);
           })

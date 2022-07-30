@@ -1,59 +1,45 @@
-import { StatusResponse } from "./StatusResponse";
+import { failIfNotOk, StatusResponse } from "./StatusResponse";
 
 export interface RetrainJob {
-  session_id: string;
+  collection_id: string;
   created_at: number;
   status: string;
 }
 
-export function fetchRetrainJob(sessionID: string): Promise<RetrainJob> {
-  interface GetRetrainJobResponse {
-    status: string;
+export function fetchRetrainStatus(collectionID: string): Promise<RetrainJob> {
+  interface GetRetrainJobResponse extends StatusResponse {
     job: RetrainJob;
   }
 
-  return fetch("/api/v1/retrain_job", {
+  return fetch(`/api/v1/retrain/status?collectionID=${collectionID}`, {
     method: "GET",
-    headers: {
-      Accept: "application/json",
-      SessionID: sessionID,
-    },
   })
     .then((resp) => resp.json())
-    .then((data: GetRetrainJobResponse) => data.job);
+    .then((data: GetRetrainJobResponse) => {
+      failIfNotOk(data);
+      return data.job;
+    });
 }
 
-export function startRetraining(sessionID: string): Promise<string> {
-  return fetch("/api/v1/retrain", {
-    method: "GET",
-    headers: {
-      Accept: "application/json",
-      SessionID: sessionID,
-    },
+export function startRetraining(collectionID: string): Promise<void> {
+  return fetch(`/api/v1/retrain/start?collectionID=${collectionID}`, {
+    method: "POST",
   })
     .then((resp) => resp.json())
-    .then((data: StatusResponse) => data.status);
+    .then((data: StatusResponse) => failIfNotOk(data));
 }
 
-export function abortRetraining(sessionID: string): Promise<string> {
-  return fetch("/api/v1/abort_retrain_job", {
-    method: "GET",
-    headers: {
-      Accept: "application/json",
-      SessionID: sessionID,
-    },
+export function abortRetraining(collectionID: string): Promise<void> {
+  return fetch(`/api/v1/retrain/abort?collectionID=${collectionID}`, {
+    method: "POST",
   })
     .then((resp) => resp.json())
-    .then((data: StatusResponse) => data.status);
+    .then((data: StatusResponse) => failIfNotOk(data));
 }
 
-export function clearRetraining(sessionID: string): Promise<string> {
-  return fetch("/api/v1/retrain_job", {
+export function clearRetraining(collectionID: string): Promise<string> {
+  return fetch(`/api/v1/retrain/status?collectionID=${collectionID}`, {
     method: "DELETE",
-    headers: {
-      Accept: "application/json",
-      SessionID: sessionID,
-    },
   })
     .then((resp) => resp.json())
     .then((data: StatusResponse) => data.status);

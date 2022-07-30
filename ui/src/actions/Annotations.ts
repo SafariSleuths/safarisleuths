@@ -1,4 +1,4 @@
-import { StatusResponse } from "./StatusResponse";
+import { failIfNotOk, StatusOk, StatusResponse } from "./StatusResponse";
 
 export const Undetected = "undetected";
 
@@ -37,38 +37,32 @@ export function compareAnnotations(a: Annotation, b: Annotation): number {
 }
 
 export function fetchAnnotations(
-  sessionID: string
+  collectionID: string
 ): Promise<Array<Annotation>> {
-  interface AnnotationsResponse {
-    status: string;
+  interface AnnotationsResponse extends StatusResponse {
     annotations: Array<Annotation>;
   }
 
-  return fetch("/api/v1/annotations", {
+  return fetch(`/api/v1/annotations?collectionID=${collectionID}`, {
     method: "GET",
-    headers: {
-      Accept: "application/json",
-      SessionID: sessionID,
-    },
+    headers: { Accept: "application/json" },
   })
     .then((resp) => resp.json())
-    .then((data: AnnotationsResponse) => data.annotations);
+    .then((data: AnnotationsResponse) => {
+      failIfNotOk(data);
+      return data.annotations;
+    });
 }
 
 export function submitAnnotations(
-  sessionID: string,
+  collectionID: string,
   annotations: Array<Annotation>
-): Promise<string> {
-  const annotationsJSON = JSON.stringify(annotations);
-  return fetch("/api/v1/annotations", {
+): Promise<void> {
+  return fetch(`/api/v1/annotations?collectionID=${collectionID}`, {
     method: "POST",
-    headers: {
-      Accept: "application/json",
-      "Content-Type": "application/json",
-      SessionID: sessionID,
-    },
-    body: annotationsJSON,
+    headers: { "Content-Type": "application/json", Accept: "application/json" },
+    body: JSON.stringify(annotations),
   })
     .then((resp) => resp.json())
-    .then((data: StatusResponse) => data.status);
+    .then((data: StatusResponse) => failIfNotOk(data));
 }

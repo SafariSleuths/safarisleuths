@@ -3,10 +3,10 @@ import React from "react";
 import { fetchRetrainLogs, RetrainEventLog } from "../actions/RetrainingLogs";
 import { RetrainingLogsTable } from "./RetrainingLogsTable";
 import { RetrainingButtons } from "./RetrainingButtons";
-import { fetchRetrainJob, RetrainJob } from "../actions/RetrainJob";
+import { fetchRetrainStatus, RetrainJob } from "../actions/RetrainJob";
 import { RetrainImagesDisplay } from "./RetrainImagesDisplay";
 
-export function Retraining(props: { sessionID: string }) {
+export function Retraining(props: { collectionID: string }) {
   const [retrainJob, setRetrainJob] = React.useState<RetrainJob | undefined>(
     undefined
   );
@@ -17,16 +17,16 @@ export function Retraining(props: { sessionID: string }) {
   const firstUpdate = React.useRef(true);
   React.useEffect(() => {
     if (firstUpdate.current || retrainJob === undefined) {
-      fetchRetrainJob(props.sessionID).then((job) => setRetrainJob(job));
-      fetchRetrainLogs(props.sessionID).then((logs) => setRetrainLogs(logs));
+      fetchRetrainStatus(props.collectionID).then((job) => setRetrainJob(job));
+      fetchRetrainLogs(props.collectionID).then((logs) => setRetrainLogs(logs));
       firstUpdate.current = false;
     }
     const interval = setInterval(() => {
       if (retrainJob?.status == "completed") {
         clearInterval(interval);
       }
-      fetchRetrainJob(props.sessionID).then((job) => setRetrainJob(job));
-      fetchRetrainLogs(props.sessionID).then((logs) => setRetrainLogs(logs));
+      fetchRetrainStatus(props.collectionID).then((job) => setRetrainJob(job));
+      fetchRetrainLogs(props.collectionID).then((logs) => setRetrainLogs(logs));
     }, 5000);
     return () => clearInterval(interval);
   });
@@ -38,14 +38,14 @@ export function Retraining(props: { sessionID: string }) {
         Prediction Results tab.
       </p>
       <RetrainingButtons
-        sessionID={props.sessionID}
+        collectionID={props.collectionID}
         job={retrainJob}
         setJob={setRetrainJob}
         setLogs={setRetrainLogs}
       />
       <RetrainingStatus job={retrainJob} />
       <RetrainingLogsTable logs={retrainLogs} />
-      <RetrainImagesDisplay sessionID={props.sessionID} />
+      <RetrainImagesDisplay collectionID={props.collectionID} />
     </Stack>
   );
 }
