@@ -1,7 +1,6 @@
 .idea
 __pycache__
 .DS_Store
+training_data
+embedding_train_logs
 website-data
-leopard.coco
-hyena.coco
-great_zebra_giraffe

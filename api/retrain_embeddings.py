@@ -1,5 +1,4 @@
 import os
-from typing import List
 
 import lightly
 import pytorch_lightning as pl
@@ -13,7 +12,7 @@ from pytorch_lightning.callbacks import EarlyStopping
 from pytorch_lightning.loggers import CSVLogger
 from torch.utils.data import DataLoader
 
-from api.annotations import Annotation, read_annotations_for_collection
+from api.annotations import read_annotations_for_collection
 from api.embeddings_train_dataset import EmbeddingsTrainDataset
 
 TRAINING_BATCH_SIZE = 320
@@ -126,10 +125,10 @@ def retrain_embeddings(collection_id: str):
     # Save the retrained model backbone and projection head
     pretrained_backbone = simclr_model.backbone
     backbone_state_dict = {'resnet18_parameters': pretrained_backbone.state_dict()}
-    torch.save(backbone_state_dict, 'simclrresnet18embed_last.pth')
+    torch.save(backbone_state_dict, BACKBONE_MODEL_PATH)
 
     pretrained_projection_head = simclr_model.projection_head
     projection_head_state_dict = {'projection_parameters': pretrained_projection_head.state_dict()}
-    torch.save(projection_head_state_dict, 'simclr_projection_head_last.pth')
+    torch.save(projection_head_state_dict, PROJECTION_HEAD_MODEL_PATH)
 
     print('Embedding retraining has completed.')
