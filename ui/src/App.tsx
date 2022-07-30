@@ -1,7 +1,7 @@
 import React from "react";
 import "./App.css";
 import { Box, Stack } from "@mui/material";
-import { MainMenu } from "./MainMenu";
+import { MainMenu } from "./components/MainMenu";
 
 export default function App() {
   return (

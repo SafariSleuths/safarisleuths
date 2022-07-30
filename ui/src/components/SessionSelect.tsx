@@ -7,7 +7,7 @@ import {
   Select,
   TextField,
 } from "@mui/material";
-import { getSessions, putSession, Session } from "./Session";
+import { getSessions, putSession, Session } from "../actions/Sessions";
 
 export function SessionSelect(props: {
   sessionID: string;
@@ -31,11 +31,11 @@ export function SessionSelect(props: {
     <Grid marginTop={2} container>
       <Grid item xs={3}>
         <h4>Choose an existing session:</h4>
-        <InputLabel id="session">Session</InputLabel>
+        <InputLabel id="session">Sessions</InputLabel>
         <Select
           size={"small"}
           value={sessions !== undefined ? props.sessionID : ""}
-          label="Session"
+          label="Sessions"
           id="session"
           onChange={(e) => props.setSessionID(e.target.value)}
         >

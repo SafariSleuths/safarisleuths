@@ -1,10 +1,10 @@
 import React from "react";
 import { Box, Tab, Tabs } from "@mui/material";
-import { SourceFiles } from "./SourceFiles";
-import { ViewPredictions } from "./ViewPredictions";
+import { SourcePhotos } from "./SourcePhotos";
+import { PredictionResults } from "./PredictionResults";
 import { KnownIndividuals } from "./KnownIndividuals";
 import { Documentation } from "./Documentation";
-import { ViewRetraining } from "./ViewRetraining";
+import { Retraining } from "./Retraining";
 
 export function MainMenu() {
   const [value, setValue] = React.useState(0);
@@ -18,14 +18,14 @@ export function MainMenu() {
   switch (value) {
     case 0:
       content = (
-        <SourceFiles sessionID={sessionID} setSessionID={setSessionID} />
+        <SourcePhotos sessionID={sessionID} setSessionID={setSessionID} />
       );
       break;
     case 1:
-      content = <ViewPredictions sessionID={sessionID} />;
+      content = <PredictionResults sessionID={sessionID} />;
       break;
     case 2:
-      content = <ViewRetraining sessionID={sessionID} />;
+      content = <Retraining sessionID={sessionID} />;
       break;
     case 3:
       content = <KnownIndividuals />;
