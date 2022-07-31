@@ -21,8 +21,16 @@ export function fetchRetrainStatus(collectionID: string): Promise<RetrainJob> {
     });
 }
 
-export function startRetraining(collectionID: string): Promise<void> {
-  return fetch(`/api/v1/retrain/start?collectionID=${collectionID}`, {
+export function retrainClassifier(collectionID: string): Promise<void> {
+  return fetch(`/api/v1/retrain/classifier?collectionID=${collectionID}`, {
+    method: "POST",
+  })
+    .then((resp) => resp.json())
+    .then((data: StatusResponse) => failIfNotOk(data));
+}
+
+export function retrainEmbeddings(collectionID: string): Promise<void> {
+  return fetch(`/api/v1/retrain/embeddings?collectionID=${collectionID}`, {
     method: "POST",
   })
     .then((resp) => resp.json())

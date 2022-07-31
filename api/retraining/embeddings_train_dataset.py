@@ -6,7 +6,7 @@ from PIL import Image
 from torch.utils.data import Dataset
 from torchvision.transforms import transforms
 
-from api.annotations import Annotation
+from api.data_models.annotations import Annotation
 
 
 class TrainInput(NamedTuple):

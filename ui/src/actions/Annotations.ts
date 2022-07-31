@@ -1,4 +1,4 @@
-import { failIfNotOk, StatusOk, StatusResponse } from "./StatusResponse";
+import { failIfNotOk, StatusResponse } from "./StatusResponse";
 
 export const Undetected = "undetected";
 

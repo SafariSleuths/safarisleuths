@@ -2,10 +2,10 @@ from typing import TypedDict, List
 
 from flask import Blueprint
 
-from api.annotations import Annotation, truncate_annotations_for_collection, save_annotations_for_collection
-from api.collections import must_get_collection_id
-from api.predict_bounding_boxes import predict_bounding_boxes_for_collection
-from api.predict_individual import predict_individuals_from_yolov_predictions
+from api.data_models.annotations import Annotation, truncate_annotations_for_collection, save_annotations_for_collection
+from api.endpoints.helpers import must_get_collection_id
+from api.predictions.predict_bounding_boxes import predict_bounding_boxes_for_collection
+from api.predictions.predict_individual import predict_individuals_from_yolov_predictions
 
 flask_blueprint = Blueprint('predictions', __name__)
 

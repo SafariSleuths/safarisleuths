@@ -1,4 +1,6 @@
+import multiprocessing
 import os
+from typing import Callable
 
 import lightly
 import pytorch_lightning as pl
@@ -7,16 +9,15 @@ import torch.nn as nn
 import torchvision
 from lightly.loss import NTXentLoss
 from lightly.models.modules.heads import SimCLRProjectionHead
-from pytorch_lightning import Trainer
+from pytorch_lightning import Trainer, Callback
 from pytorch_lightning.callbacks import EarlyStopping
-from pytorch_lightning.loggers import CSVLogger
 from torch.utils.data import DataLoader
 
-from api.annotations import read_annotations_for_collection
-from api.embeddings_train_dataset import EmbeddingsTrainDataset
+from api.retraining.embeddings_train_dataset import EmbeddingsTrainDataset
+from api.retraining.retrain_embeddings_logger import RetrainEmbeddingsLogger
 
 TRAINING_BATCH_SIZE = 320
-TRAINING_WORKERS = 2
+TRAINING_WORKERS = multiprocessing.cpu_count()
 TRAINING_MAX_EPOCHS = 100
 
 BACKBONE_MODEL_PATH = 'models/simclrresnet18embed.pth'
@@ -72,20 +73,25 @@ class SimCLRModel(pl.LightningModule):
         return [optim], [scheduler]
 
 
-def retrain_embeddings(collection_id: str):
-    new_annotations = read_annotations_for_collection(collection_id)
-    new_annotations = [a for a in new_annotations if a['accepted']]
-    if len(new_annotations) == 0:
-        job['status'] = 'completed'
-        save_job_status_to_redis(job)
-        current_app.logger.info('Retraining skipped since there are no new annotations for training.')
+class ShouldAbortCallback(Callback):
+    def __init__(self, should_abort: Callable[[], bool]):
+        super().__init__()
+        self.__should_abort = should_abort
 
-    # Get the number of old training data images to collect from S3
-    num2sample = embedding_num_sample(len(new_annotations))
+    def on_train_epoch_end(self, trainer: "pl.Trainer", pl_module: "pl.LightningModule") -> None:
+        if self.__should_abort():
+            trainer.should_stop = True
 
-    # Create a dataset object of the randomly sampled images from S3
-    train_dataset = EmbeddingsTrainDataset(new_annotations, num2sample)
+    def on_validation_end(self, trainer: "pl.Trainer", pl_module: "pl.LightningModule") -> None:
+        if self.__should_abort():
+            trainer.should_stop = True
 
+
+def retrain_embeddings(
+        should_abort: Callable[[], bool],
+        train_dataset: EmbeddingsTrainDataset,
+        logger: RetrainEmbeddingsLogger
+):
     # Use the lightly SimCLR collate function to create the augmented transforms
     collate_fn = lightly.data.SimCLRCollateFunction(input_size=224)
 
@@ -113,13 +119,14 @@ def retrain_embeddings(collection_id: str):
     simclr_model = SimCLRModel(backbone, project_head)
 
     # Define the pytorch trainer and allow for early stopping
-    stop_callback = EarlyStopping(monitor='train_loss', patience=3, verbose=True, mode='min')
+    early_stopping_callback = EarlyStopping(monitor='train_loss', patience=3, verbose=True, mode='min')
+    should_abort_callback = ShouldAbortCallback(should_abort)
     os.makedirs('embedding_train_logs', exist_ok=True)
     Trainer(
         max_epochs=TRAINING_MAX_EPOCHS,
         gpus=1 if torch.cuda.is_available() else 0,
-        callbacks=[stop_callback],
-        logger=CSVLogger('embedding_train_logs', name='retrain_embeddings')
+        callbacks=[early_stopping_callback, should_abort_callback],
+        logger=logger
     ).fit(simclr_model, train_dataloader)
 
     # Save the retrained model backbone and projection head

@@ -3,7 +3,7 @@ from typing import TypedDict, List
 import flask
 from flask import Blueprint, request
 
-from api.species import Species
+from api.data_models.species import Species
 
 flask_blueprint = Blueprint('labels', __name__)
 

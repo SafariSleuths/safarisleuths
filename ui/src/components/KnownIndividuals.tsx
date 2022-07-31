@@ -1,5 +1,3 @@
-import { Box } from "@mui/material";
-
 export function KnownIndividuals() {
   return (
     <p>

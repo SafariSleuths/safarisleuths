@@ -7,8 +7,8 @@ import torch
 from torch.utils.data import Dataset
 from torchvision import transforms
 
-from api.annotations import Annotation
-from api.species import Species
+from api.data_models.annotations import Annotation
+from api.data_models.species import Species
 
 
 class TrainInput(NamedTuple):

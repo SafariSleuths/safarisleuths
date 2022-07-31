@@ -12,8 +12,8 @@ from torch.utils.data import Dataset, DataLoader
 from torchvision import transforms
 from sklearn.preprocessing import normalize
 
-from api.species import Species
-from api.predict_bounding_boxes import YolovPrediction
+from api.data_models.species import Species
+from api.predictions.predict_bounding_boxes import YolovPrediction
 
 logger = logging.getLogger(__name__)
 

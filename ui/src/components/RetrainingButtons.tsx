@@ -4,8 +4,9 @@ import React from "react";
 import {
   abortRetraining,
   clearRetraining,
+  retrainClassifier,
+  retrainEmbeddings,
   RetrainJob,
-  startRetraining,
 } from "../actions/RetrainJob";
 
 export function RetrainingButtons(props: {
@@ -20,14 +21,13 @@ export function RetrainingButtons(props: {
     props.job?.status === "aborted";
 
   const canAbort = !canStart;
-  const canClear = canStart;
 
   return (
     <ButtonGroup>
       <Button
         disabled={!canStart}
         onClick={() =>
-          startRetraining(props.collectionID).then(() => {
+          retrainEmbeddings(props.collectionID).then(() => {
             props.setJob(undefined);
             props.setLogs([]);
           })
@@ -36,13 +36,24 @@ export function RetrainingButtons(props: {
         Start Retraining
       </Button>
       <Button
+        disabled={!canStart}
+        onClick={() =>
+          retrainClassifier(props.collectionID).then(() => {
+            props.setJob(undefined);
+            props.setLogs([]);
+          })
+        }
+      >
+        Classifier Only <small>(faster)</small>
+      </Button>
+      <Button
         disabled={!canAbort}
         onClick={() => abortRetraining(props.collectionID)}
       >
         Abort Retraining
       </Button>
       <Button
-        disabled={!canClear}
+        disabled={!canStart}
         onClick={() =>
           clearRetraining(props.collectionID).then(() => {
             props.setJob(undefined);

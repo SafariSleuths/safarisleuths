@@ -1,4 +1,4 @@
-import { Annotation } from "../actions/Annotations";
+import { Annotation } from "./Annotations";
 import { failIfNotOk, StatusResponse } from "./StatusResponse";
 
 export function fetchPredictions(

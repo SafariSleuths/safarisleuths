@@ -2,11 +2,7 @@ from __future__ import annotations
 
 import json
 from enum import Enum
-from typing import Optional, List, TypedDict
-
-from flask import Blueprint
-
-flask_blueprint = Blueprint('species', __name__)
+from typing import Optional, List
 
 
 class Species(Enum):
@@ -36,13 +32,3 @@ class Species(Enum):
     def read_labels(self) -> List[str]:
         with open(self.labels_location()) as f:
             return json.load(f)
-
-
-class GetSpeciesResponse(TypedDict):
-    status: str
-    species: List[str]
-
-
-@flask_blueprint.get('/api/v1/species')
-def get_species() -> GetSpeciesResponse:
-    return {'status': 'ok', 'species': [x.value for x in Species]}

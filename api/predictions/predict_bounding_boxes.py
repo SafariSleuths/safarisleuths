@@ -7,8 +7,8 @@ import PIL
 import torch
 from PIL import Image, ImageDraw
 
-from api.prediction_inputs import InputImage, read_images_for_collection
-from api.s3_client import s3_bucket
+from api.data_models.prediction_inputs import InputImage, read_images_for_collection
+from api.clients.s3_client import s3_bucket
 
 logger = logging.getLogger(__name__)
 
