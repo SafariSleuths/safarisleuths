@@ -1,0 +1,610 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="description" content="" />
+    <meta name="author" content="" />
+    <meta name="generator" content="Hugo 0.101.0" />
+    <title>Safari Sleuths</title>
+
+    <!-- CSS only -->
+    <link
+      href="https://cdn.jsdelivr.net/npm/bootstrap@5.2.0/dist/css/bootstrap.min.css"
+      rel="stylesheet"
+      integrity="sha384-gH2yIJqKdNHPEq0n4Mqa/HGKIhSkIHeL5AyhkYV8i59U5AR6csBvApHHNl/vI1Bx"
+      crossorigin="anonymous"
+    />
+
+    <link rel="icon" href="/docs/5.2/assets/img/favicons/favicon.ico" />
+    <meta name="theme-color" content="#712cf9" />
+
+    <link href="style.css" rel="stylesheet" />
+  </head>
+  <body>
+    <header class="site-header sticky-top py-1 bg-brown">
+      <nav
+        class="container d-flex flex-column flex-md-row justify-content-between"
+      >
+        <a class="py-2" href="#" aria-label="Product">
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            width="24"
+            height="24"
+            fill="none"
+            stroke="currentColor"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            stroke-width="2"
+            class="d-block mx-auto"
+            role="img"
+            viewBox="0 0 24 24"
+          >
+            <title>Safari Sleuths</title>
+            <circle cx="12" cy="12" r="10" />
+            <path
+              d="M14.31 8l5.74 9.94M9.69 8h11.48M7.38 12l5.74-9.94M9.69 16L3.95 6.06M14.31 16H2.83m13.79-4l-5.74 9.94"
+            />
+          </svg>
+        </a>
+        <a
+          class="py-2 d-none d-md-inline-block text-decoration-none"
+          href="#Overview"
+          >Overview</a
+        >
+        <a
+          class="py-2 d-none d-md-inline-block text-decoration-none"
+          href="#TrainingData"
+          >Data</a
+        >
+        <a
+          class="py-2 d-none d-md-inline-block text-decoration-none"
+          href="#Modeling"
+          >Modeling</a
+        >
+        <a
+          class="py-2 d-none d-md-inline-block text-decoration-none"
+          href="#Results"
+          >Results</a
+        >
+        <a
+          class="py-2 d-none d-md-inline-block text-decoration-none"
+          href="#Application"
+          >App</a
+        >
+        <a
+          class="py-2 d-none d-md-inline-block text-decoration-none"
+          href="#Team"
+          >Team</a
+        >
+      </nav>
+    </header>
+
+    <main>
+      <div class="pt-5 m-3 text-center bg-light">
+        <div class="p-3 mx-auto">
+          <div class="row row-cols-3">
+            <div class="col col-3">
+              <img src="logo-250x250.png" alt="Logo" />
+            </div>
+            <div class="col col-6">
+              <h1 class="display-4 fw-normal">Safari Sleuths</h1>
+              <p class="lead fw-normal">
+                We support conservationists and researchers in combating
+                poaching through automating identification of individual
+                animals.
+              </p>
+            </div>
+            <div class="col col-3"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="d-md-flex flex-md-equal w-100 my-md-3 ps-md-3" id="Overview">
+        <div class="text-jet me-md-3 pt-3 px-3 pt-md-5 px-md-5 text-dim-grey">
+          <div class="my-3 py-3">
+            <h2 class="display-5 text-center text-jet pb-4">Overview</h2>
+            <p class="lead text-justify">
+              Poaching continues to pose a threat to the survival of endangered
+              species, even on protected land. Tracking individual animals and
+              maintaining species counts is essential in combating this threat,
+              by allowing conservationists to determine the impact of natural
+              changes vs poaching impact and deciding where and when to deploy
+              resources to protect the animals. However, current methods of
+              identifying and counting individual animals are time-consuming and
+              limit the ability to protect them in a timely manner.
+            </p>
+            <p class="lead text-justify">
+              Our solution to this problem is to automate the process of
+              identifying individual animals in camera-trap still images,
+              allowing conservationists to more quickly check and correct
+              individual animal labels if necessary. Using publicly available
+              datasets for individual animal identification, we successfully
+              implemented models to predict more than 800 unique animals across
+              3 species and developed an interactive tool to allow users to view
+              predicted labels and make corrections as needed.
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <div
+        class="d-md-flex flex-md-equal w-100 my-md-3 ps-md-3 pt-4"
+        id="TrainingData"
+      >
+        <div class="me-md-3 pt-3 px-3 pt-md-5 px-md-5 overflow-hidden">
+          <div class="text-jet my-3 p-3">
+            <h2 class="display-5 text-center rounded pb-4">Training Data</h2>
+            <p class="lead text-justify">
+              For the datasets, we were able to retrieve a handful of images for
+              each animal in relation to Hyenas, Leopards, and Giraffes. These
+              images were posted into an S3 bucket along with their annotations
+              that include the coordinates for their bounding boxes and
+              individual IDs. We then further divided the individual animal
+              images into a set of training, validation, and testing folders
+              that were used for our modeling process.
+            </p>
+            <h4>Training Data Counts</h4>
+            <div class="container">
+              <table class="table">
+                <thead>
+                  <tr>
+                    <th>Species</th>
+                    <th>Training</th>
+                    <th>Validation</th>
+                    <th>Test</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td>Hyena (Crocuta crocuta)</td>
+                    <td>256 animals, 2,506 images</td>
+                    <td>162 animals, 310 images</td>
+                    <td>154 animals, 312 images</td>
+                  </tr>
+                  <tr>
+                    <td>Leopard (Panthera pardus)</td>
+                    <td>193 animals, 673 images</td>
+                    <td>162 animals, 310 images</td>
+                    <td>186 animals, 673 mages</td>
+                  </tr>
+                  <tr>
+                    <td>Giraffe (Giraffa tippelskirchi)</td>
+                    <td>151 animals, 520 images</td>
+                    <td>38 animals, 52 images</td>
+                    <td>39 animals, 62 images</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <br />
+            <div>
+              <h4>Data Sources</h4>
+              <ul>
+                <li>
+                  Botswana Predator Conservation Trust (2022). Panthera pardus
+                  CSV custom export. Retrieved from
+                  <a href="https://africancarnivore.wildbook.org">
+                    African Carnivore Wildbook
+                  </a>
+                  2022-04-28.
+                </li>
+                <li>
+                  Botswana Predator Conservation Trust (2022). Crocuta crocuta
+                  CSV custom export. Retrieved from
+                  <a href="https://africancarnivore.wildbook.org">
+                    African Carnivore Wildbook
+                  </a>
+                  2022-04-28.
+                </li>
+                <li>
+                  Parham J, Crall J, Stewart C, Berger-Wolf T, Rubenstein DI.
+                  <a
+                    href="https://oar.princeton.edu/jspui/handle/88435/pr1s791"
+                  >
+                    Animal population censusing at scale with citizen science
+                    and photographic identification.
+                  </a>
+                  In AAAI Spring Symposium-Technical Report 2017 Jan
+                </li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="d-md-flex flex-md-equal w-100 my-md-3 ps-md-3" id="Modeling">
+        <div class="me-md-3 pt-3 px-3 pt-md-5 px-md-5 overflow-hidden">
+          <div class="my-3 p-3">
+            <h2 class="display-5 text-center pb-4">Modeling</h2>
+            <p class="lead text-justify">
+              The modeling process starts with the images that have been
+              uploaded into the 3 distinct folders of train, validation, and
+              test with a configuration file that will have the labels for
+              classification. These images are resized to a consistent size and
+              passed into the YOLOv5 pipeline along with the location to the
+              images and the coordinate annotations and weights applied. After
+              training, the model can detect the location of the animals within
+              an image with a confidence score, and can crop the animals from
+              the image. The cropped images are passed into the individual
+              detection phase. We train a model to produce image embeddings by
+              using SimCLR v1 to fine-tune the resnet18 embeddings. The
+              embeddings are used as features to train an individual recognition
+              classifier. Lastly, we train KNN classifiers with a nearest
+              neighbor of 1 to assign individual labels.
+            </p>
+            <br />
+            <div class="pt-4">
+              <h4 class="pb-4">YOLOv5 | Object Detection</h4>
+
+              <p class="text-justify">
+                To train the YOLOv5 model, we used the YOLOv5 small model and
+                froze the model backbone (the first 10 layers). We initially
+                chose to use the YOLOv5 small model since we had a small dataset
+                and to minimize training time needed. Since the model achieved
+                high accuracy and low loss scores on our validation dataset, we
+                chose to implement YOLOv5 small in our model pipeline rather
+                than experiment with larger YOLOv5 models, given the time
+                constraints of our project. For training, we kept the default
+                image size of 640, and used a batch size of 32 and 100 as the
+                number of training epochs. We froze the model backbone to retain
+                the benefit of Coco pre-training, since we did not have the
+                recommended 1500 images per species. We allowed the
+                hyperparameters to be tuned from scratch using the
+                hyp.scratch-low.yaml file, due to error messages when using yaml
+                files with preset parameters. In addition to using the training
+                images and label txt files produced by our species datasets, we
+                added unlabeled images from the Coco 2017 dataset, which
+                accounted for 10% of the total number of training images (based
+                upon guidelines to have unlabeled images account for 10% - 15%
+                of the training dataset).
+              </p>
+              <div class="text-center p-4">
+                <img src="yolov5_pipeline.png" alt="YOLOv5 Pipeline Diagram" />
+              </div>
+            </div>
+            <div class="pt-4">
+              <h4 class="pb-4">SimCLR v1 | Image Embeddings</h4>
+
+              <p class="text-justify">
+                To train the SimCLR v1 model, we used a ResNet18 model as the
+                model backbone (to obtain the feature embeddings), as well as
+                the SimCLRProjectionHead from the lightly package. We used
+                ResNet18 rather than the ResNet50 in the original paper due to
+                persistent out of CUDA memory errors when attempting to train a
+                larger model. The SimCLRProjectionHead is a dense layer used to
+                convert the output vector from the ResNet backbone to a vector
+                of size 128 used in training with NT-Xent loss (normalized
+                temperature scaled cross entropy loss), similar to the
+                projection head used in the original paper. We also used the
+                lightly SimCLRCollateFunction to create the SimCLR augmentations
+                in the training DataLoader object (random cropping, flipping,
+                conversions to gray scale, and color jittering, similarly to the
+                augmentations used in the original SimCLR v1 paper). We set the
+                number of training epochs as 180 and used a batch size of 320,
+                as the SimCLR model needs a large batch size to have a
+                sufficient number of negative examples for the loss function,
+                and since this was the largest batch size that we could fit into
+                memory given our computational resources. To avoid overfitting
+                on the training dataset, we implemented early stopping of model
+                training if the validation loss stops improving for 5 steps.
+              </p>
+
+              <div class="text-center p-4">
+                <img src="simclr_pipeline.png" alt="Simclr Pipeline Diagram" />
+              </div>
+            </div>
+
+            <div class="pt-4">
+              <h4 class="pb-4">KNN Classifier | Individual Identification</h4>
+
+              <p class="text-justify">
+                To develop the individual animal classifiers, we start by
+                creating a torch dataset object from the images in our training
+                dataset. These images are then resized to the input size needed
+                for our ResNet18 model (224x224), converted to torch tensors,
+                and normalized using the mean and standard deviation of the
+                ImageNet dataset. The mean and standard deviation of ImageNet
+                are used due to its use in prior literature and to aid in
+                generalization, due to the augmentation used in training the
+                ResNet18 backbone in the SimCLR model.
+              </p>
+              <p class="text-justify">
+                After the training data is transformed, we create a dataloader
+                from the training dataset and use the saved model backbone from
+                our trained SimCLR model to extract the embeddings of each of
+                the training images.
+              </p>
+              <p class="text-justify">
+                To train the species specific classifiers, we used grid search
+                to find the hyperparameters that produce the highest accuracy
+                rates on the training dataset for a KNN Classifier. During
+                experimentation, we found that KNN Classifiers fitted to our
+                training data produced higher top-1 validation accuracy scores
+                than other commonly used classifiers for small individual
+                recognition datasets (e.g. SVM, Logistic Regression), across all
+                species tested. For the parameter grid, we tested commonly used
+                values for the number of neighbors, weights, and distance
+                metric, as well as the varying fractions of explained variance
+                for PCA dimensionality reduction. PCA was included in the
+                pipeline due to its use in prior studies for individual
+                recognition and to enable timely fitting and training of the
+                model due to the large feature vector size (size 512 vector).
+                For grid search, we used K Fold with 5 folds rather than the
+                default Stratified K Fold since some of the individual animals
+                only had 1 image in the training dataset. The grid search object
+                is fitted to the transformed training data tensors and training
+                data labels, with the best fit estimator saved as each species’
+                individual recognition classifier.
+              </p>
+              <div class="text-center p-4">
+                <img src="knn_pipeline.png" alt="KNN Pipeline Diagram" />
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div
+        class="d-md-flex flex-md-equal w-100 my-md-3 ps-md-3 pt-4"
+        id="Results"
+      >
+        <div class="me-md-3 pt-3 px-3 pt-md-5 px-md-5overflow-hidden">
+          <div class="my-3 p-3">
+            <h2 class="display-5 text-center pb-4">Modeling Results</h2>
+            <p class="lead">
+              At this stage, we are presenting validation set results and can
+              see that YOLOv5 has achieved high accuracy, recall, and precision
+              scores as well as low losses. We chose these metrics since they
+              are commonly reported in the literature. Additionally, since the
+              distribution of training images between species is imabalanced,
+              including precision and recall better reflects model performance
+              than accuracy alone. Here, bounding box loss is the errors between
+              predicted and actual bounding boxes, object loss – errors in
+              whether or not an object is detected inside a bounding box, and
+              classification loss (the squared error of the conditional
+              probabilities of each class). The model fails to produce
+              predictions for 2% of validation images; however, when a
+              prediction is produced, the predicted classes are highly accurate,
+              with only 7 images out of more than a 1k having an incorrect class
+              predicted. For our giraffe species, all images were accurately
+              classified, which may be due to the YOLOv5 model being pre-trained
+              on the general class giraffes; hyenas and leopards were not
+              pre-training classes.
+            </p>
+            <p class="lead">
+              For the individual recognition models, we are reporting top-1
+              accuracy scores, since the predicted label is what is displayed to
+              the web API user and due to its use in prior studies on individual
+              identification. We are also reporting weighted precision and
+              recall scores, due to the imbalance in the representation of
+              individual animals in our datasets. Although there is room for
+              improvement in our top-1 accuracy scores, the classifiers are
+              fairly accurate, given the highly-multiclass nature of our
+              predictions (431 unique leopards; 256 hyenas; 151 giraffes) and
+              when considering that many animals had 10 or fewer training
+              images. When analyzing classifier performance, we see that for
+              hyenas and leopards, the bulk of classification errors occur when
+              the animal had between 5 and 10 training images; giraffes vary,
+              but most animals in that dataset had <= 10 training images.
+            </p>
+
+            <div class="container">
+              <h4 class="pt-4 pb-4">Object Detection Results</h4>
+              <table class="table">
+                <thead>
+                  <tr>
+                    <th>Species</th>
+                    <th>Accuracy</th>
+                    <th>Precision</th>
+                    <th>Recall</th>
+                    <th>F1-Score</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td>Hyena (Crocuta crocuta)</td>
+                    <td>99.4%</td>
+                    <td>0.985</td>
+                    <td>0.988</td>
+                    <td>0.987</td>
+                  </tr>
+                  <tr>
+                    <td>Leopard (Panthera pardus)</td>
+                    <td>99.6%</td>
+                    <td>0.994</td>
+                    <td>0.993</td>
+                    <td>0.993</td>
+                  </tr>
+                  <tr>
+                    <td>Giraffe (Giraffa tippelskirchi)</td>
+                    <td>100%</td>
+                    <td>1</td>
+                    <td>1</td>
+                    <td>1</td>
+                  </tr>
+                </tbody>
+              </table>
+              <h4 class="pt-4 pb-4">Individual Detection Results</h4>
+              <table class="table">
+                <thead>
+                  <tr>
+                    <th>Species</th>
+                    <th>Top-1 Accuracy</th>
+                    <th>Weighted Precision</th>
+                    <th>Weighted Recall</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td>Hyena (Crocuta crocuta)</td>
+                    <td>42.6%</td>
+                    <td>0.441</td>
+                    <td>0.426</td>
+                  </tr>
+                  <tr>
+                    <td>Leopard (Panthera pardus)</td>
+                    <td>62.0%</td>
+                    <td>0.613</td>
+                    <td>0.620</td>
+                  </tr>
+                  <tr>
+                    <td>Giraffe (Giraffa tippelskirchi)</td>
+                    <td>58.1%</td>
+                    <td>0.737</td>
+                    <td>0.581</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div
+        class="d-md-flex flex-md-equal w-100 my-md-3 ps-md-3 pt-4"
+        id="Application"
+      >
+        <div
+          class="me-md-3 pt-3 px-3 pt-md-5 px-md-5 text-center overflow-hidden"
+        >
+          <div class="my-3 p-3">
+            <h2 class="display-5 pb-4">Application</h2>
+            <p class="lead">And an even wittier subheading.</p>
+            add link to video demo
+          </div>
+        </div>
+      </div>
+
+      <div class="d-md-flex flex-md-equal w-100 my-md-3 ps-md-3 pt-4" id="Team">
+        <div class="me-md-3 pt-3 px-3 pt-md-5 px-md-5 overflow-hidden">
+          <div class="my-3 p-3">
+            <h2 class="display-5 text-center pb-4">Team</h2>
+            <div class="row mt-4">
+              <div class="col text-center">
+                <h5 class="">Jackson Argo</h5>
+                <img src="jackson.jpg" alt="Jackson" />
+                <p class="mt-2">
+                  Jackson is a data engineer on the data products team at
+                  Discord and a remote graduate student at University of
+                  California, Berkeley, pursuing a masters degree in information
+                  and data science. He possesses 10 years’ experience in data
+                  engineering and system management. Jackson is passionate about
+                  all things data engineering, data science, and the ethics and
+                  values in these fields.
+                </p>
+              </div>
+              <div class="col text-center">
+                <h5>Brittany Dougall</h5>
+                <img src="brittany.jpg" alt="Brittany" />
+                <p class="mt-2">
+                  Brittany is an applied data scientist at Microsoft supporting
+                  Microsoft Office products. Previously, Brittany worked in
+                  healthcare and analytics for 7 years in quality improvement,
+                  genetic testing, and consulting. She is currently completing
+                  her Master of Information and Data Science degree at UC
+                  Berkeley with a focusin machine learning and natural language
+                  processing, with an anticipated graduation date of August
+                  2022. Outside of school and work, Brittany enjoys rock
+                  climbing and traveling.
+                </p>
+              </div>
+              <div class="col text-center">
+                <h5>Austin Jin</h5>
+                <img src="austin.jpg" alt="Austin" />
+                <p class="mt-2">
+                  Austin is currently a full-time customer engineer and data
+                  scientist at Databricks while pursuing a part-time master's
+                  degree at UC Berkeley in information and data science with a
+                  specialization in machine/deep learning. He plans to graduate
+                  in August of 2022. Prior to joining Databricks, Austin worked
+                  as a Lead Data Engineer and Architect at IBM supporting
+                  clients in the public sector, Fortune 500s and mid-sized
+                  companies. His interests include music, data engineering and
+                  science, machine and deep learning, and product management.
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </main>
+
+    <footer class="container py-5">
+      <div class="row">
+        <div class="col-12 col-md">
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            width="24"
+            height="24"
+            fill="none"
+            stroke="currentColor"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            stroke-width="2"
+            class="d-block mb-2"
+            role="img"
+            viewBox="0 0 24 24"
+          >
+            <title>Product</title>
+            <circle cx="12" cy="12" r="10" />
+            <path
+              d="M14.31 8l5.74 9.94M9.69 8h11.48M7.38 12l5.74-9.94M9.69 16L3.95 6.06M14.31 16H2.83m13.79-4l-5.74 9.94"
+            />
+          </svg>
+          <small class="d-block mb-3 text-muted">&copy; 2022</small>
+        </div>
+        <div class="col-6 col-md">
+          <h5>Features</h5>
+          <ul class="list-unstyled text-small">
+            <li>
+              <a
+                class="link-secondary"
+                href="https://github.com/SafariSleuths/safarisleuths"
+                >Git Repo</a
+              >
+            </li>
+            <li><a class="link-secondary" href="#">Random feature</a></li>
+            <li><a class="link-secondary" href="#">Team feature</a></li>
+            <li><a class="link-secondary" href="#">Stuff for developers</a></li>
+            <li><a class="link-secondary" href="#">Another one</a></li>
+            <li><a class="link-secondary" href="#">Last time</a></li>
+          </ul>
+        </div>
+        <div class="col-6 col-md">
+          <h5>Resources</h5>
+          <ul class="list-unstyled text-small">
+            <li><a class="link-secondary" href="#">Resource name</a></li>
+            <li><a class="link-secondary" href="#">Resource</a></li>
+            <li><a class="link-secondary" href="#">Another resource</a></li>
+            <li><a class="link-secondary" href="#">Final resource</a></li>
+          </ul>
+        </div>
+        <div class="col-6 col-md">
+          <h5>Resources</h5>
+          <ul class="list-unstyled text-small">
+            <li><a class="link-secondary" href="#">Business</a></li>
+            <li><a class="link-secondary" href="#">Education</a></li>
+            <li><a class="link-secondary" href="#">Government</a></li>
+            <li><a class="link-secondary" href="#">Gaming</a></li>
+          </ul>
+        </div>
+        <div class="col-6 col-md">
+          <h5>About</h5>
+          <ul class="list-unstyled text-small">
+            <li><a class="link-secondary" href="#">Team</a></li>
+            <li><a class="link-secondary" href="#">Locations</a></li>
+            <li><a class="link-secondary" href="#">Privacy</a></li>
+            <li><a class="link-secondary" href="#">Terms</a></li>
+          </ul>
+        </div>
+      </div>
+    </footer>
+
+    <script
+      src="https://cdn.jsdelivr.net/npm/bootstrap@5.2.0/dist/js/bootstrap.bundle.min.js"
+      integrity="sha384-A3rJD856KowSb7dwlZdYEkO39Gagi7vIsF0jrRAoQmDKKtQBHUuLZ9AsSv4jD4Xa"
+      crossorigin="anonymous"
+    ></script>
+  </body>
+</html>
