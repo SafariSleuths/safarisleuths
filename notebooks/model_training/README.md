@@ -4,7 +4,7 @@
 
 The code to finetune a Yolov5 model for custom class prediction, using a batch size of 32, an input image size of 640, and training for 100 epochs. To run this script, you will need to have already performed the following steps: cloned https://github.com/ultralytics/yolov5, created a custom class yaml file in the data folder of the cloned yolov5 repo, created a directory called custom_data with subdirectories for images and labels in the cloned Yolov5 folder, created train, validation, and test subfolders within the image and labels subfolders, and added your images (size 640x640) and txt label files to the train, validation, and test subfolders. In the training image folder, you should also have added your unlabeled images (also size 640x640), which should account for 10 - 15% of the total number of training images. 
 
-Creates the Yolov5 onxx model `frozen_backbone_coco_unlabeled_best.onnx`.
+Creates the Yolov5 onxx model `frozen_backbone_coco_unlabeled_best.pt`.
 
 ### `batch320_simclr_lightly.ipynb`
 
