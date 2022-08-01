@@ -23,6 +23,7 @@ export function PredictionResults(props: { collectionID: string }) {
   );
 
   const [showLoading, setShowLoading] = useState(false);
+  const [predictionError, setPredictionError] = useState("");
 
   const jsonDownloadUrl = useJsonDownloadUrl(annotations);
   const annotationsByName: Map<string, Array<Annotation>> = (
@@ -62,10 +63,12 @@ export function PredictionResults(props: { collectionID: string }) {
         setAnnotations={setAnnotations}
         setShowLoading={setShowLoading}
         jsonDownloadUrl={jsonDownloadUrl}
+        setPredictionError={setPredictionError}
       />
       <DisplayAnnotations
         collectionID={props.collectionID}
         showLoading={showLoading}
+        predictionError={predictionError}
         updateAnnotations={updateAnnotations}
         annotationsByName={annotationsByName}
       />
@@ -76,9 +79,14 @@ export function PredictionResults(props: { collectionID: string }) {
 function DisplayAnnotations(props: {
   collectionID: string;
   showLoading: boolean;
+  predictionError: string;
   updateAnnotations: (updates: Array<Annotation>) => void;
   annotationsByName: Map<string, Array<Annotation>>;
 }) {
+  if (props.predictionError != "") {
+    return <Box>{props.predictionError}</Box>;
+  }
+
   if (props.showLoading) {
     return (
       <Box alignContent={"center"} width={"100%"}>

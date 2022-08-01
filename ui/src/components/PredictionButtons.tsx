@@ -9,12 +9,14 @@ export function PredictionButtons(props: {
   setShowLoading: (v: boolean) => void;
   setAnnotations: (v: Array<Annotation>) => void;
   jsonDownloadUrl: string | undefined;
+  setPredictionError: (v: string) => void;
 }) {
   const getPredictions = () =>
     fetchAndSortPredictions(
       props.collectionID,
       props.setShowLoading,
-      props.setAnnotations
+      props.setAnnotations,
+      props.setPredictionError
     );
 
   return (
@@ -40,12 +42,15 @@ export function PredictionButtons(props: {
 function fetchAndSortPredictions(
   collectionID: string,
   setShowLoading: (v: boolean) => void,
-  setAnnotations: (v: Array<Annotation>) => void
+  setAnnotations: (v: Array<Annotation>) => void,
+  setPredictionError: (v: string) => void
 ) {
   setShowLoading(true);
-  fetchPredictions(collectionID).then((annotations) => {
-    annotations.sort(compareAnnotations);
-    setAnnotations(annotations);
-    setShowLoading(false);
-  });
+  fetchPredictions(collectionID)
+    .then((annotations) => {
+      annotations.sort(compareAnnotations);
+      setAnnotations(annotations);
+      setShowLoading(false);
+    })
+    .catch((reason) => setPredictionError(reason));
 }
