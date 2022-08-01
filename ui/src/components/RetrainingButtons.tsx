@@ -20,8 +20,6 @@ export function RetrainingButtons(props: {
     props.job?.status === "not started" ||
     props.job?.status === "aborted";
 
-  const canAbort = !canStart;
-
   return (
     <ButtonGroup>
       <Button
@@ -45,12 +43,6 @@ export function RetrainingButtons(props: {
         }
       >
         Classifier Only <small>(faster)</small>
-      </Button>
-      <Button
-        disabled={!canAbort}
-        onClick={() => abortRetraining(props.collectionID)}
-      >
-        Abort Retraining
       </Button>
       <Button
         disabled={!canStart}

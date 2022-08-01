@@ -28,7 +28,8 @@ def get_images() -> GetImagesResponse:
 @flask_blueprint.post('/api/v1/images')
 def post_images() -> PostImagesResponse:
     collection_id = must_get_collection_id()
-    uploaded = save_images_for_collection(collection_id, request.files)
+    files = request.files
+    uploaded = save_images_for_collection(collection_id, files)
     return {'status': 'ok', 'uploaded': [f'/{i}' for i in uploaded]}
 
 

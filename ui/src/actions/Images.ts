@@ -34,7 +34,6 @@ export function uploadImages(
   }
   return fetch(`/api/v1/images?collectionID=${collectionID}`, {
     method: "POST",
-    headers: { "Content-Type": "multipart/form-data" },
     body: data,
   })
     .then((resp) => resp.json())
