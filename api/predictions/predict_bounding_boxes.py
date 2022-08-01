@@ -41,7 +41,7 @@ def predict_bounding_boxes_for_collection(collection_id: str) -> List[YolovPredi
     start_time = datetime.now()
 
     model = torch.hub.load(
-        'ultralytics/yolov5', 'custom', 'models/frozen_backbone_coco_unlabeled_best.onnx',
+        'ultralytics/yolov5', 'custom', 'models/frozen_backbone_coco_unlabeled.pt',
         autoshape=True, force_reload=True
     )
 

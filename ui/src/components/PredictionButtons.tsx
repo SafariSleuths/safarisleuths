@@ -46,6 +46,7 @@ function fetchAndSortPredictions(
   setPredictionError: (v: string) => void
 ) {
   setShowLoading(true);
+  setPredictionError("");
   fetchPredictions(collectionID)
     .then((annotations) => {
       annotations.sort(compareAnnotations);
