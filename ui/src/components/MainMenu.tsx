@@ -31,9 +31,6 @@ export function MainMenu() {
       content = <Retraining collectionID={collectionID} />;
       break;
     case 3:
-      content = <KnownIndividuals />;
-      break;
-    case 4:
       content = <Documentation />;
       break;
   }
@@ -49,7 +46,6 @@ export function MainMenu() {
           <Tab label="Source Photos" />
           <Tab label="Prediction Results" />
           <Tab label="Retraining" />
-          <Tab label="Known Individuals" />
           <Tab label="Documentation" />
         </Tabs>
       </Box>
