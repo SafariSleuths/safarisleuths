@@ -53,6 +53,8 @@ We provide a browser-based application that allows you to run predictions and re
 redis database, which you can launch using docker-compose.
 
 ```shell
+git checkout git@github.com:SafariSleuths/safarisleuths.git
+cd safarisleuths
 docker-compose up
 ```
 
