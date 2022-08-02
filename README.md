@@ -9,3 +9,12 @@ Our solution to this problem is to automate the process of identifying individua
 
 ## Launching the Application
 
+Here is the link to the front end UI: https://groups.ischool.berkeley.edu/safari_sleuths/
+
+And the steps on how to execute the end-to-end modeling process:
+
+1.) Create a new collection or choose an existing collection
+2.) Upload photo(s)
+3.) Compute the prediction results
+4.) Accept, reject, or edit the annotations
+5.) Retrain the model to recompute the prediction results
