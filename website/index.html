@@ -131,10 +131,9 @@
           <div class="text-jet my-3 p-3">
             <h2 class="display-5 text-center rounded pb-4">Training Data</h2>
             <p class="lead text-justify">
-              For the datasets, we were able to retrieve a handful of images for
-              each animal in relation to Hyenas, Leopards, and Giraffes. These
-              images were posted into an S3 bucket along with their annotations
-              that include the coordinates for their bounding boxes and
+              The hyena, leopard, and giraffe
+              images were posted into an S3 bucket along with their annotation
+              files containing the coordinates for their bounding boxes and
               individual IDs. We then further divided the individual animal
               images into a set of training, validation, and testing folders
               that were used for our modeling process.
@@ -348,24 +347,8 @@
           <div class="my-3 p-3">
             <h2 class="display-5 text-center pb-4">Modeling Results</h2>
             <p class="lead">
-              At this stage, we are presenting validation set results and can
-              see that YOLOv5 has achieved high accuracy, recall, and precision
-              scores as well as low losses. We chose these metrics since they
-              are commonly reported in the literature. Additionally, since the
-              distribution of training images between species is imabalanced,
-              including precision and recall better reflects model performance
-              than accuracy alone. Here, bounding box loss is the errors between
-              predicted and actual bounding boxes, object loss – errors in
-              whether or not an object is detected inside a bounding box, and
-              classification loss (the squared error of the conditional
-              probabilities of each class). The model fails to produce
-              predictions for 2% of validation images; however, when a
-              prediction is produced, the predicted classes are highly accurate,
-              with only 7 images out of more than a 1k having an incorrect class
-              predicted. For our giraffe species, all images were accurately
-              classified, which may be due to the YOLOv5 model being pre-trained
-              on the general class giraffes; hyenas and leopards were not
-              pre-training classes.
+              Our YOLOv5 model achieves low training and validation loss scores in the 3 types of losses used to evaluate model performance: bounding box loss (the errors between predicted and actual bounding boxes), object loss (errors in whether or not an object is detected inside a bounding box), and classification loss (the squared error of the conditional probabilities of each class).
+Based upon test image performance, YOLOv5 achieves high accuracy, recall, and precision scores. We chose these metrics since they are commonly reported in the literature and reported them by species, due to the imbalance in the representation of the 3 species in our dataset. The model fails to produce predictions for 2% of test images; however, when a prediction is produced, the predicted classes are highly accurate, with only 9 images out of more than 1k having an incorrect class predicted. For our giraffe species, all images were accurately classified, which may be due to the Yolov5 model being pre-trained on the general class giraffes; hyenas and leopards were not seen in the pre-training classes.
             </p>
             <p class="lead">
               For the individual recognition models, we are reporting top-1
