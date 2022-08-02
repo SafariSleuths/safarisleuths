@@ -1,12 +1,19 @@
 import json
 import logging
+import os
 
 import flask
 from flask import send_from_directory
 from werkzeug.exceptions import HTTPException
 
-from api.data_models.collections import save_collection_to_redis, Collection
+from api.clients.redis_client import redis_client
+from api.data_models.retrain_event_log import LOGS_REDIS_KEY
+from api.data_models.retrain_metrics import METRICS_REDIS_KEY
+from api.data_models.retrain_status import JOBS_REDIS_KEY
 from api.endpoints import images, labels, collections, annotations, species, predictions, retrain
+
+APP_HOST = os.getenv('APP_HOST', 'localhost')
+APP_PORT = int(os.getenv('APP_PORT', '5000'))
 
 logging.basicConfig(
     format='%(asctime)s.%(msecs)d %(pathname)s:%(lineno)d [%(levelname)s] %(message)s',
@@ -48,5 +55,7 @@ def serve():
 
 
 if __name__ == "__main__":
-    save_collection_to_redis(Collection(id='Demo', name='Demo'))
-    app.run()
+    redis_client.delete(JOBS_REDIS_KEY)
+    redis_client.delete(LOGS_REDIS_KEY)
+    redis_client.delete(METRICS_REDIS_KEY)
+    app.run(port=APP_PORT, host=APP_HOST)

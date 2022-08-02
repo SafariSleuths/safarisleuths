@@ -1,3 +1,4 @@
+import glob
 import os
 from typing import NamedTuple, List
 import PIL
@@ -19,7 +20,9 @@ class InputImage(NamedTuple):
 
 
 def list_image_paths_for_collection(collection_id: str) -> List[str]:
-    return [o.key for o in s3_bucket.objects.filter(Prefix=f'{INPUTS_PATH}/{collection_id}/')]
+    if s3_bucket is not None:
+        return [o.key for o in s3_bucket.objects.filter(Prefix=f'{INPUTS_PATH}/{collection_id}/')]
+    return [fname for fname in glob.glob(f'{INPUTS_PATH}/{collection_id}/**.jpg')]
 
 
 def read_images_for_collection(collection_id: str) -> List[InputImage]:
@@ -47,7 +50,8 @@ def save_images_for_collection(collection_id: str, files: ImmutableMultiDict[str
     for file_name in files:
         dest = f'{INPUTS_PATH}/{collection_id}/{os.path.basename(file_name)}'
         files[file_name].save(dest)
-        s3_bucket.upload_file(dest, dest)
+        if s3_bucket is not None:
+            s3_bucket.upload_file(dest, dest)
         uploaded.append(dest)
     return uploaded
 

@@ -4,3 +4,4 @@ __pycache__
 training_data
 embedding_train_logs
 website-data
+retrain_embeddings

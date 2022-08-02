@@ -114,14 +114,16 @@ def predict_bounding_boxes(model, input_image: InputImage, collection_id: str) -
 def crop_and_upload(image: PIL.Image.Image, dest: str, bbox: BoundingBox) -> None:
     os.makedirs(os.path.dirname(dest), exist_ok=True)
     image.crop(bbox.to_xy()).save(dest)
-    s3_bucket.upload_file(dest, dest)
+    if s3_bucket is not None:
+        s3_bucket.upload_file(dest, dest)
 
 
 def annotate_and_upload(image: PIL.Image.Image, dest: str, bbox: BoundingBox) -> None:
     ImageDraw.Draw(image).rectangle(bbox.to_xy(), outline=BOX_COLOR, width=5)
     os.makedirs(os.path.dirname(dest), exist_ok=True)
     image.save(dest)
-    s3_bucket.upload_file(dest, dest)
+    if s3_bucket is not None:
+        s3_bucket.upload_file(dest, dest)
 
 
 def yolov2coco(

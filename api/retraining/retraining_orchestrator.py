@@ -1,11 +1,13 @@
 import json
 import logging
+import shutil
 import time
 from datetime import datetime
 from typing import List, Dict
 
 from torch.utils.data import DataLoader
 
+from api.clients.s3_client import s3_bucket
 from api.data_models.annotations import read_annotations_for_collection, Annotation
 from api.predictions.predict_individual import load_backbone
 from api.retraining.classifier_train_dataset import ClassifierTrainDataset
@@ -59,6 +61,9 @@ class RetrainingOrchestrator:
         if self.__should_abort():
             self.__log_event('Retraining aborted!')
             return
+
+        self.__upload_annotations_to_training(new_annotations)
+        self.__log_event(f'New images added to classifier training data for future training.')
 
         job = self.__job_status()
         job['status'] = 'completed'
@@ -152,3 +157,18 @@ class RetrainingOrchestrator:
                 results[species] = []
             results[species].append(annotation)
         return results
+
+    @staticmethod
+    def __upload_annotations_to_training(annotations: List[Annotation]) -> None:
+        for annotation in annotations:
+            if annotation['accepted'] is False:
+                continue
+
+            species = Species.from_string(annotation['predicted_species'])
+            if species is None:
+                continue
+
+            new_path = f"{species.training_data_location()}/{annotation['predicted_name']}/{annotation['id']}.jpg"
+            shutil.copyfile(annotation['cropped_file_name'], new_path)
+            if s3_bucket is not None:
+                s3_bucket.upload_file(annotation['cropped_file_name'], new_path)

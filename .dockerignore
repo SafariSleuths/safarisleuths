@@ -1,0 +1,5 @@
+website-data
+training_data
+retrain_embeddings
+ui/build
+ui/node_modules
