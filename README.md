@@ -7,3 +7,5 @@ Poaching continues to pose a threat to the survival of endangered species, even 
 
 Our solution to this problem is to automate the process of identifying individual animals in camera-trap still images, allowing conservationists to more quickly check and correct individual animal labels if necessary. Using publicly available datasets for individual animal identification, we successfully implemented models to predict more than 800 unique animals across 3 species and developed an interactive tool to allow users to view predicted labels and make corrections as needed.
 
+## Launching the Application
+
